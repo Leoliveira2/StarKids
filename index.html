@@ -12,9 +12,6 @@
     <meta name="apple-mobile-web-app-title" content="SuperKids">
     <meta name="theme-color" content="#3B82F6">
     
-    <!-- Manifest -->
-    <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22SuperKids%22%2C%22short_name%22%3A%22SuperKids%22%2C%22start_url%22%3A%22/%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%233B82F6%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage/svg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI%2BCjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiMzQjgyRjYiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI%2BCjxwYXRoIGQ9Im05IDEyIDIgMiA0LTQiLz4KPHN2ZyB4PSI2IiB5PSI2IiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPgo8cG9seWdvbiBwb2ludHM9IjEyIDIgMTUuMDkgOC4yNiAyMiA5IDEyIDEzIDIgOSA4LjkxIDguMjYgMTIgMiIvPgo8L3N2Zz4KPC9zdmc%2BCjwvc3ZnPgo%3D%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image/svg%2Bxml%22%7D%5D%7D">
-    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -45,16 +42,6 @@
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        
-        .pulse-success {
-            animation: pulseSuccess 0.5s ease-in-out;
-        }
-        
-        @keyframes pulseSuccess {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
     </style>
 </head>
 <body>
@@ -64,12 +51,27 @@
         // Estado Global da Aplicação
         let appState = {
             currentUser: null,
-            users: [],
-            activities: [],
-            rewards: [],
+            users: JSON.parse(localStorage.getItem('superkids-users') || '[]'),
+            activities: JSON.parse(localStorage.getItem('superkids-activities') || '[]'),
+            rewards: JSON.parse(localStorage.getItem('superkids-rewards') || '[]'),
             showLogin: true,
             showAddActivity: false,
-            selectedTheme: 'blue'
+            selectedTheme: localStorage.getItem('superkids-theme') || 'blue'
+        };
+
+        // Estado dos formulários (separado para evitar re-renders)
+        let loginForm = {
+            name: '',
+            type: 'child',
+            mascot: 'star',
+            isRegistering: false
+        };
+
+        let activityForm = {
+            name: '',
+            description: '',
+            points: 10,
+            targetUserId: ''
         };
 
         // Configurações
@@ -138,18 +140,6 @@
             localStorage.setItem('superkids-theme', appState.selectedTheme);
         }
 
-        function loadFromLocalStorage() {
-            const savedUsers = localStorage.getItem('superkids-users');
-            const savedActivities = localStorage.getItem('superkids-activities');
-            const savedRewards = localStorage.getItem('superkids-rewards');
-            const savedTheme = localStorage.getItem('superkids-theme');
-
-            if (savedUsers) appState.users = JSON.parse(savedUsers);
-            if (savedActivities) appState.activities = JSON.parse(savedActivities);
-            if (savedRewards) appState.rewards = JSON.parse(savedRewards);
-            if (savedTheme) appState.selectedTheme = savedTheme;
-        }
-
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
             notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
@@ -164,57 +154,183 @@
             }, 3000);
         }
 
-        // Componentes
-        function LoginScreen() {
-            let loginData = { name: '', type: 'child', mascot: 'star' };
-            let isRegistering = false;
+        // Funções do Login
+        function handleLogin() {
+            if (!loginForm.name.trim()) {
+                showNotification('Por favor, digite seu nome!', 'error');
+                return;
+            }
 
-            function handleLogin() {
-                if (!loginData.name.trim()) {
-                    showNotification('Por favor, digite seu nome!', 'error');
+            if (loginForm.isRegistering) {
+                const newUser = {
+                    id: Date.now(),
+                    name: loginForm.name.trim(),
+                    type: loginForm.type,
+                    xp: 0,
+                    level: 1,
+                    mascot: loginForm.mascot,
+                    achievements: [],
+                    createdAt: new Date().toISOString()
+                };
+                appState.users.push(newUser);
+                appState.currentUser = newUser;
+                showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
+            } else {
+                const user = appState.users.find(u => u.name.toLowerCase() === loginForm.name.toLowerCase());
+                if (user) {
+                    appState.currentUser = user;
+                    showNotification(`Olá novamente, ${user.name}! 😊`);
+                } else {
+                    showNotification('Usuário não encontrado. Registre-se primeiro!', 'error');
                     return;
                 }
+            }
+            
+            appState.showLogin = false;
+            saveToLocalStorage();
+            render();
+        }
 
-                if (isRegistering) {
-                    const newUser = {
-                        id: Date.now(),
-                        name: loginData.name.trim(),
-                        type: loginData.type,
-                        xp: 0,
-                        level: 1,
-                        mascot: loginData.mascot,
-                        achievements: [],
-                        createdAt: new Date().toISOString()
-                    };
-                    appState.users.push(newUser);
-                    appState.currentUser = newUser;
-                    showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
-                } else {
-                    const user = appState.users.find(u => u.name.toLowerCase() === loginData.name.toLowerCase());
-                    if (user) {
-                        appState.currentUser = user;
-                        showNotification(`Olá novamente, ${user.name}! 😊`);
-                    } else {
-                        showNotification('Usuário não encontrado. Registre-se primeiro!', 'error');
-                        return;
-                    }
+        function toggleRegistering() {
+            loginForm.isRegistering = !loginForm.isRegistering;
+            render();
+        }
+
+        function selectMascot(mascot) {
+            loginForm.mascot = mascot;
+            render();
+        }
+
+        function logout() {
+            appState.currentUser = null;
+            appState.showLogin = true;
+            loginForm = { name: '', type: 'child', mascot: 'star', isRegistering: false };
+            render();
+        }
+
+        // Funções das Atividades
+        function completeActivity(activityId) {
+            appState.activities = appState.activities.map(a => 
+                a.id === activityId ? { ...a, status: 'pending_approval' } : a
+            );
+            
+            const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+            showNotification(randomMessage);
+            saveToLocalStorage();
+            render();
+        }
+
+        function approveActivity(activityId, approve) {
+            const activity = appState.activities.find(a => a.id === activityId);
+            if (!activity) return;
+
+            appState.activities = appState.activities.map(a => 
+                a.id === activityId ? { ...a, status: approve ? 'completed' : 'pending' } : a
+            );
+
+            if (approve) {
+                // Adicionar XP ao usuário
+                appState.users = appState.users.map(u => 
+                    u.id === activity.userId ? { ...u, xp: u.xp + activity.points } : u
+                );
+
+                // Atualizar usuário atual se for ele
+                if (appState.currentUser && appState.currentUser.id === activity.userId) {
+                    appState.currentUser.xp += activity.points;
+                }
+
+                // Verificar conquistas
+                const user = appState.users.find(u => u.id === activity.userId);
+                checkAchievements(user);
+                showNotification(`Atividade aprovada! ${user.name} ganhou ${activity.points} XP! 🌟`);
+            } else {
+                showNotification('Atividade rejeitada.');
+            }
+
+            saveToLocalStorage();
+            render();
+        }
+
+        function checkAchievements(user) {
+            const userActivities = appState.activities.filter(a => a.userId === user.id && a.status === 'completed');
+            const streak = calculateStreak(user.id);
+            const level = calculateLevel(user.xp);
+            
+            const newAchievements = [];
+            
+            achievements.forEach(achievement => {
+                if (user.achievements?.includes(achievement.id)) return;
+                
+                let unlocked = false;
+                switch (achievement.id) {
+                    case 1: unlocked = userActivities.length >= 1; break;
+                    case 2: unlocked = streak >= 3; break;
+                    case 3: unlocked = level >= 5; break;
+                    case 4: unlocked = userActivities.length >= 10; break;
+                    case 5: unlocked = streak >= 7; break;
                 }
                 
-                appState.showLogin = false;
-                saveToLocalStorage();
-                render();
+                if (unlocked) {
+                    newAchievements.push(achievement.id);
+                }
+            });
+            
+            if (newAchievements.length > 0) {
+                appState.users = appState.users.map(u => 
+                    u.id === user.id ? { 
+                        ...u, 
+                        achievements: [...(u.achievements || []), ...newAchievements] 
+                    } : u
+                );
+                
+                // Atualizar usuário atual se for ele
+                if (appState.currentUser && appState.currentUser.id === user.id) {
+                    appState.currentUser.achievements = [...(appState.currentUser.achievements || []), ...newAchievements];
+                }
+                
+                const achievementNames = newAchievements.map(id => 
+                    achievements.find(a => a.id === id).name
+                ).join(', ');
+                showNotification(`🏆 ${user.name} desbloqueou: ${achievementNames}!`);
+            }
+        }
+
+        function showAddActivityModal() {
+            appState.showAddActivity = true;
+            activityForm = { name: '', description: '', points: 10, targetUserId: '' };
+            render();
+        }
+
+        function hideAddActivityModal() {
+            appState.showAddActivity = false;
+            render();
+        }
+
+        function addActivity() {
+            if (!activityForm.name.trim() || !activityForm.targetUserId) {
+                showNotification('Preencha todos os campos obrigatórios!', 'error');
+                return;
             }
 
-            function toggleRegistering() {
-                isRegistering = !isRegistering;
-                render();
-            }
+            const activity = {
+                id: Date.now(),
+                userId: parseInt(activityForm.targetUserId),
+                name: activityForm.name.trim(),
+                description: activityForm.description.trim(),
+                points: activityForm.points,
+                status: 'pending',
+                date: new Date().toISOString()
+            };
 
-            function updateLoginData(field, value) {
-                loginData[field] = value;
-                render();
-            }
+            appState.activities.push(activity);
+            appState.showAddActivity = false;
+            showNotification('Atividade adicionada com sucesso! 🎯');
+            saveToLocalStorage();
+            render();
+        }
 
+        // Componentes
+        function LoginScreen() {
             return `
                 <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} flex items-center justify-center p-4">
                     <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
@@ -226,31 +342,31 @@
                         <div class="space-y-4">
                             <input
                                 type="text"
+                                id="login-name"
                                 placeholder="Digite seu nome"
-                                value="${loginData.name}"
-                                onchange="updateLoginData('name', this.value)"
+                                value="${loginForm.name}"
                                 class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                             />
 
-                            ${isRegistering ? `
+                            ${loginForm.isRegistering ? `
                                 <select
-                                    value="${loginData.type}"
-                                    onchange="updateLoginData('type', this.value)"
+                                    id="login-type"
+                                    value="${loginForm.type}"
                                     class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                 >
                                     <option value="child">Criança</option>
                                     <option value="parent">Pai/Responsável</option>
                                 </select>
 
-                                ${loginData.type === 'child' ? `
+                                ${loginForm.type === 'child' ? `
                                     <div>
                                         <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
                                         <div class="flex space-x-3">
                                             ${Object.entries(mascots).map(([key, mascot]) => `
                                                 <button
-                                                    onclick="updateLoginData('mascot', '${key}')"
-                                                    class="flex-1 p-3 rounded-xl border-2 ${
-                                                        loginData.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+                                                    onclick="selectMascot('${key}')"
+                                                    class="flex-1 p-3 rounded-xl border-2 transition-colors ${
+                                                        loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
                                                     }"
                                                 >
                                                     <div class="text-2xl mb-1">${mascot.emoji}</div>
@@ -266,14 +382,14 @@
                                 onclick="handleLogin()"
                                 class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
                             >
-                                ${isRegistering ? 'Registrar' : 'Entrar'}
+                                ${loginForm.isRegistering ? 'Registrar' : 'Entrar'}
                             </button>
 
                             <button
                                 onclick="toggleRegistering()"
-                                class="w-full text-blue-500 hover:text-blue-600 font-medium"
+                                class="w-full text-blue-500 hover:text-blue-600 font-medium transition-colors"
                             >
-                                ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+                                ${loginForm.isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
                             </button>
                         </div>
                     </div>
@@ -290,26 +406,6 @@
             const totalToday = todayActivities.length;
             const streak = calculateStreak(appState.currentUser.id);
             const currentMascot = mascots[appState.currentUser.mascot];
-
-            function completeActivity(activityId) {
-                appState.activities = appState.activities.map(a => 
-                    a.id === activityId ? { ...a, status: 'pending_approval' } : a
-                );
-                
-                const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-                showNotification(randomMessage);
-                saveToLocalStorage();
-                render();
-            }
-
-            function logout() {
-                appState.currentUser = null;
-                appState.showLogin = true;
-                render();
-            }
-
-            window.completeActivity = completeActivity;
-            window.logout = logout;
 
             return `
                 <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} p-4">
@@ -331,7 +427,7 @@
 
                             <!-- Stats -->
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="bg-yellow-100 p-4 rounded-xl text-center pulse-success">
+                                <div class="bg-yellow-100 p-4 rounded-xl text-center">
                                     <i data-lucide="zap" class="w-8 h-8 text-yellow-600 mx-auto mb-2"></i>
                                     <div class="text-2xl font-bold text-yellow-800">${appState.currentUser.xp}</div>
                                     <div class="text-sm text-yellow-600">XP Total</div>
@@ -440,129 +536,8 @@
         }
 
         function ParentDashboard() {
-            let newActivity = { name: '', description: '', points: 10, targetUserId: '' };
-            
             const childUsers = appState.users.filter(u => u.type === 'child');
             const pendingActivities = appState.activities.filter(a => a.status === 'pending_approval');
-
-            function addActivity() {
-                if (!newActivity.name.trim() || !newActivity.targetUserId) {
-                    showNotification('Preencha todos os campos obrigatórios!', 'error');
-                    return;
-                }
-
-                const activity = {
-                    id: Date.now(),
-                    userId: parseInt(newActivity.targetUserId),
-                    name: newActivity.name.trim(),
-                    description: newActivity.description.trim(),
-                    points: newActivity.points,
-                    status: 'pending',
-                    date: new Date().toISOString()
-                };
-
-                appState.activities.push(activity);
-                newActivity = { name: '', description: '', points: 10, targetUserId: '' };
-                appState.showAddActivity = false;
-                showNotification('Atividade adicionada com sucesso! 🎯');
-                saveToLocalStorage();
-                render();
-            }
-
-            function approveActivity(activityId, approve) {
-                const activity = appState.activities.find(a => a.id === activityId);
-                if (!activity) return;
-
-                appState.activities = appState.activities.map(a => 
-                    a.id === activityId ? { ...a, status: approve ? 'completed' : 'pending' } : a
-                );
-
-                if (approve) {
-                    // Adicionar XP ao usuário
-                    appState.users = appState.users.map(u => 
-                        u.id === activity.userId ? { ...u, xp: u.xp + activity.points } : u
-                    );
-
-                    // Verificar conquistas
-                    const user = appState.users.find(u => u.id === activity.userId);
-                    checkAchievements(user);
-                    showNotification(`Atividade aprovada! ${user.name} ganhou ${activity.points} XP! 🌟`);
-                } else {
-                    showNotification('Atividade rejeitada.');
-                }
-
-                saveToLocalStorage();
-                render();
-            }
-
-            function checkAchievements(user) {
-                const userActivities = appState.activities.filter(a => a.userId === user.id && a.status === 'completed');
-                const streak = calculateStreak(user.id);
-                const level = calculateLevel(user.xp);
-                
-                const newAchievements = [];
-                
-                achievements.forEach(achievement => {
-                    if (user.achievements?.includes(achievement.id)) return;
-                    
-                    let unlocked = false;
-                    switch (achievement.id) {
-                        case 1: unlocked = userActivities.length >= 1; break;
-                        case 2: unlocked = streak >= 3; break;
-                        case 3: unlocked = level >= 5; break;
-                        case 4: unlocked = userActivities.length >= 10; break;
-                        case 5: unlocked = streak >= 7; break;
-                    }
-                    
-                    if (unlocked) {
-                        newAchievements.push(achievement.id);
-                    }
-                });
-                
-                if (newAchievements.length > 0) {
-                    appState.users = appState.users.map(u => 
-                        u.id === user.id ? { 
-                            ...u, 
-                            achievements: [...(u.achievements || []), ...newAchievements] 
-                        } : u
-                    );
-                    
-                    const achievementNames = newAchievements.map(id => 
-                        achievements.find(a => a.id === id).name
-                    ).join(', ');
-                    showNotification(`🏆 ${user.name} desbloqueou: ${achievementNames}!`);
-                }
-            }
-
-            function showAddActivityModal() {
-                appState.showAddActivity = true;
-                render();
-            }
-
-            function hideAddActivityModal() {
-                appState.showAddActivity = false;
-                newActivity = { name: '', description: '', points: 10, targetUserId: '' };
-                render();
-            }
-
-            function updateNewActivity(field, value) {
-                newActivity[field] = value;
-                render();
-            }
-
-            function logout() {
-                appState.currentUser = null;
-                appState.showLogin = true;
-                render();
-            }
-
-            // Tornar funções globais
-            window.addActivity = addActivity;
-            window.approveActivity = approveActivity;
-            window.showAddActivityModal = showAddActivityModal;
-            window.hideAddActivityModal = hideAddActivityModal;
-            window.updateNewActivity = updateNewActivity;
-            window.logout = logout;
 
             return `
                 <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} p-4">
@@ -684,8 +659,8 @@
                                 <h2 class="text-xl font-bold text-gray-800 mb-4">Nova Atividade</h2>
                                 <div class="space-y-4">
                                     <select
-                                        value="${newActivity.targetUserId}"
-                                        onchange="updateNewActivity('targetUserId', this.value)"
+                                        id="activity-target"
+                                        value="${activityForm.targetUserId}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                     >
                                         <option value="">Selecione a criança</option>
@@ -695,23 +670,23 @@
                                     </select>
                                     <input
                                         type="text"
+                                        id="activity-name"
                                         placeholder="Nome da atividade"
-                                        value="${newActivity.name}"
-                                        onchange="updateNewActivity('name', this.value)"
+                                        value="${activityForm.name}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                     />
                                     <textarea
+                                        id="activity-description"
                                         placeholder="Descrição (opcional)"
-                                        value="${newActivity.description}"
-                                        onchange="updateNewActivity('description', this.value)"
+                                        value="${activityForm.description}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         rows="3"
                                     ></textarea>
                                     <input
                                         type="number"
+                                        id="activity-points"
                                         placeholder="Pontos XP"
-                                        value="${newActivity.points}"
-                                        onchange="updateNewActivity('points', parseInt(this.value) || 10)"
+                                        value="${activityForm.points}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         min="1"
                                         max="100"
@@ -754,192 +729,63 @@
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
             }
+
+            // Configurar event listeners para inputs (apenas uma vez após render)
+            setupInputListeners();
+        }
+
+        // Configurar listeners para inputs sem causar re-render
+        function setupInputListeners() {
+            // Login form listeners
+            const loginNameInput = document.getElementById('login-name');
+            if (loginNameInput) {
+                loginNameInput.addEventListener('input', (e) => {
+                    loginForm.name = e.target.value;
+                });
+            }
+
+            const loginTypeSelect = document.getElementById('login-type');
+            if (loginTypeSelect) {
+                loginTypeSelect.addEventListener('change', (e) => {
+                    loginForm.type = e.target.value;
+                    render(); // Re-render apenas quando o tipo muda (para mostrar/esconder mascotes)
+                });
+            }
+
+            // Activity form listeners
+            const activityNameInput = document.getElementById('activity-name');
+            if (activityNameInput) {
+                activityNameInput.addEventListener('input', (e) => {
+                    activityForm.name = e.target.value;
+                });
+            }
+
+            const activityDescInput = document.getElementById('activity-description');
+            if (activityDescInput) {
+                activityDescInput.addEventListener('input', (e) => {
+                    activityForm.description = e.target.value;
+                });
+            }
+
+            const activityPointsInput = document.getElementById('activity-points');
+            if (activityPointsInput) {
+                activityPointsInput.addEventListener('input', (e) => {
+                    activityForm.points = parseInt(e.target.value) || 10;
+                });
+            }
+
+            const activityTargetSelect = document.getElementById('activity-target');
+            if (activityTargetSelect) {
+                activityTargetSelect.addEventListener('change', (e) => {
+                    activityForm.targetUserId = e.target.value;
+                });
+            }
         }
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            loadFromLocalStorage();
             render();
-            
-            // Registrar Service Worker para PWA
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('data:text/javascript;base64,dGhpcyBpcyBhIGVtcHR5IHNlcnZpY2Ugd29ya2Vy')
-                    .catch(err => console.log('SW registration failed'));
-            }
         });
-
-        // Funções globais para interação
-        window.updateLoginData = function(field, value) {
-            // Esta função será redefinida no contexto do componente LoginScreen
-        };
-
-        window.toggleRegistering = function() {
-            // Esta função será redefinida no contexto do componente LoginScreen
-        };
-
-        window.handleLogin = function() {
-            // Esta função será redefinida no contexto do componente LoginScreen
-        };
-
-        // Interceptar eventos de input em tempo real
-        document.addEventListener('input', function(e) {
-            if (e.target.matches('input[onchange*="updateLoginData"]')) {
-                const field = e.target.getAttribute('onchange').match(/'([^']+)'/)[1];
-                if (window.currentLoginData) {
-                    window.currentLoginData[field] = e.target.value;
-                }
-            }
-            
-            if (e.target.matches('input[onchange*="updateNewActivity"]') || e.target.matches('textarea[onchange*="updateNewActivity"]') || e.target.matches('select[onchange*="updateNewActivity"]')) {
-                const field = e.target.getAttribute('onchange').match(/'([^']+)'/)[1];
-                if (window.currentNewActivity) {
-                    window.currentNewActivity[field] = e.target.type === 'number' ? parseInt(e.target.value) || 10 : e.target.value;
-                }
-            }
-        });
-
-        // Recriar componentes com estado persistente
-        function LoginScreen() {
-            if (!window.currentLoginData) {
-                window.currentLoginData = { name: '', type: 'child', mascot: 'star' };
-            }
-            if (typeof window.currentIsRegistering === 'undefined') {
-                window.currentIsRegistering = false;
-            }
-
-            const loginData = window.currentLoginData;
-            const isRegistering = window.currentIsRegistering;
-
-            window.handleLogin = function() {
-                if (!loginData.name.trim()) {
-                    showNotification('Por favor, digite seu nome!', 'error');
-                    return;
-                }
-
-                if (isRegistering) {
-                    const newUser = {
-                        id: Date.now(),
-                        name: loginData.name.trim(),
-                        type: loginData.type,
-                        xp: 0,
-                        level: 1,
-                        mascot: loginData.mascot,
-                        achievements: [],
-                        createdAt: new Date().toISOString()
-                    };
-                    appState.users.push(newUser);
-                    appState.currentUser = newUser;
-                    showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
-                } else {
-                    const user = appState.users.find(u => u.name.toLowerCase() === loginData.name.toLowerCase());
-                    if (user) {
-                        appState.currentUser = user;
-                        showNotification(`Olá novamente, ${user.name}! 😊`);
-                    } else {
-                        showNotification('Usuário não encontrado. Registre-se primeiro!', 'error');
-                        return;
-                    }
-                }
-                
-                appState.showLogin = false;
-                saveToLocalStorage();
-                render();
-            };
-
-            window.toggleRegistering = function() {
-                window.currentIsRegistering = !window.currentIsRegistering;
-                render();
-            };
-
-            window.updateLoginData = function(field, value) {
-                loginData[field] = value;
-                render();
-            };
-
-            return `
-                <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} flex items-center justify-center p-4">
-                    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
-                        <div class="text-center mb-8">
-                            <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
-                            <p class="text-gray-600">Sua aventura de aprendizado começa aqui!</p>
-                        </div>
-
-                        <div class="space-y-4">
-                            <input
-                                type="text"
-                                placeholder="Digite seu nome"
-                                value="${loginData.name}"
-                                onchange="updateLoginData('name', this.value)"
-                                oninput="updateLoginData('name', this.value)"
-                                class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                            />
-
-                            ${isRegistering ? `
-                                <select
-                                    value="${loginData.type}"
-                                    onchange="updateLoginData('type', this.value)"
-                                    class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                                >
-                                    <option value="child">Criança</option>
-                                    <option value="parent">Pai/Responsável</option>
-                                </select>
-
-                                ${loginData.type === 'child' ? `
-                                    <div>
-                                        <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
-                                        <div class="flex space-x-3">
-                                            ${Object.entries(mascots).map(([key, mascot]) => `
-                                                <button
-                                                    onclick="updateLoginData('mascot', '${key}')"
-                                                    class="flex-1 p-3 rounded-xl border-2 transition-colors ${
-                                                        loginData.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                                                    }"
-                                                >
-                                                    <div class="text-2xl mb-1">${mascot.emoji}</div>
-                                                    <div class="text-sm">${mascot.name}</div>
-                                                </button>
-                                            `).join('')}
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            ` : ''}
-
-                            <button
-                                onclick="handleLogin()"
-                                class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
-                            >
-                                ${isRegistering ? 'Registrar' : 'Entrar'}
-                            </button>
-
-                            <button
-                                onclick="toggleRegistering()"
-                                class="w-full text-blue-500 hover:text-blue-600 font-medium transition-colors"
-                            >
-                                ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Atualizar função de renderização para usar a nova versão do LoginScreen
-        function render() {
-            const app = document.getElementById('app');
-            
-            if (appState.showLogin || !appState.currentUser) {
-                app.innerHTML = LoginScreen();
-            } else if (appState.currentUser.type === 'child') {
-                app.innerHTML = ChildDashboard();
-            } else {
-                app.innerHTML = ParentDashboard();
-            }
-            
-            // Inicializar ícones Lucide
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-        }
     </script>
 </body>
 </html>
