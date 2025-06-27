@@ -49,6 +49,57 @@
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+
+        /* Animação de dança para mascotes */
+        @keyframes dance {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(10deg) scale(1.1); }
+            50% { transform: rotate(0deg) scale(1); }
+            75% { transform: rotate(-10deg) scale(1.1); }
+            100% { transform: rotate(0deg) scale(1); }
+        }
+        
+        .dance {
+            animation: dance 0.8s ease-in-out;
+            display: inline-block;
+        }
+
+        /* Animação de celebração */
+        @keyframes celebrate {
+            0% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.2) rotate(5deg); }
+            50% { transform: scale(1.1) rotate(-5deg); }
+            75% { transform: scale(1.2) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        
+        .celebrate {
+            animation: celebrate 0.6s ease-in-out;
+        }
+
+        /* Efeito de confete */
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+        
+        .confetti {
+            position: absolute;
+            font-size: 20px;
+            animation: confetti 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        /* Shake para erro */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
     </style>
 </head>
 <body>
@@ -78,9 +129,12 @@
         };
 
         const mascots = {
-            star: { name: 'Stella', emoji: '⭐' },
-            dragon: { name: 'Drako', emoji: '🐉' },
-            heart: { name: 'Coração', emoji: '💖' }
+            star: { name: 'Stella', emoji: '⭐', danceClass: 'dance' },
+            dragon: { name: 'Drako', emoji: '🐉', danceClass: 'dance' },
+            heart: { name: 'Coração', emoji: '💖', danceClass: 'dance' },
+            chancho: { name: 'Chancho', emoji: '🦖', danceClass: 'dance' },
+            robot: { name: 'Robo', emoji: '🤖', danceClass: 'dance' },
+            unicorn: { name: 'Uni', emoji: '🦄', danceClass: 'dance' }
         };
 
         const motivationalMessages = [
@@ -88,7 +142,10 @@
             'Que orgulho! Mais uma conquista! 🎉',
             'Uau! Você é incrível! 💪',
             'Fantástico! Continue assim! 🌟',
-            'Você é demais! Brilhando sempre! ✨'
+            'Você é demais! Brilhando sempre! ✨',
+            'Incrível! Você é um campeão! 🏆',
+            'Perfeito! Você está voando! 🚀',
+            'Sensacional! Que dedicação! 💎'
         ];
 
         const achievements = [
@@ -96,7 +153,8 @@
             { id: 2, name: 'Dedicado', description: 'Complete 5 atividades', points: 5, icon: '📚' },
             { id: 3, name: 'Super Estrela', description: 'Complete 10 atividades', points: 10, icon: '⭐' },
             { id: 4, name: 'Imparável', description: 'Complete 20 atividades', points: 20, icon: '🚀' },
-            { id: 5, name: 'Lenda', description: 'Complete 50 atividades', points: 50, icon: '👑' }
+            { id: 5, name: 'Lenda', description: 'Complete 50 atividades', points: 50, icon: '👑' },
+            { id: 6, name: 'Mestre', description: 'Complete 100 atividades', points: 100, icon: '🏆' }
         ];
 
         const defaultActivities = [
@@ -109,10 +167,71 @@
             { name: 'Ler por 15 minutos', description: 'Momento de leitura diária', points: 15 },
             { name: 'Organizar o quarto', description: 'Guardar brinquedos e organizar espaço', points: 10 },
             { name: 'Tomar banho', description: 'Higiene pessoal completa', points: 10 },
-            { name: 'Comer frutas ou verduras', description: 'Alimentação saudável', points: 10 }
+            { name: 'Comer frutas ou verduras', description: 'Alimentação saudável', points: 10 },
+            { name: 'Ajudar nas tarefas domésticas', description: 'Colaborar com a família', points: 15 },
+            { name: 'Praticar exercícios', description: '30 minutos de atividade física', points: 20 }
         ];
 
-        // Funções Utilitárias
+        // Função para vibrar o dispositivo
+        function vibrateDevice(pattern = [200, 100, 200]) {
+            try {
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(pattern);
+                }
+            } catch (e) {
+                console.log('Vibração não suportada');
+            }
+        }
+
+        // Função para tocar som de sucesso
+        function playSuccessSound() {
+            try {
+                // Criar um contexto de áudio simples
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Áudio não suportado');
+            }
+        }
+
+        // Função para criar efeito de confete
+        function createConfetti(element) {
+            const confettiEmojis = ['🎉', '⭐', '🌟', '✨', '🎊', '🏆'];
+            
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.textContent = confettiEmojis[Math.floor(Math.random() * confettiEmojis.length)];
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    
+                    element.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        if (confetti.parentNode) {
+                            confetti.parentNode.removeChild(confetti);
+                        }
+                    }, 2000);
+                }, i * 100);
+            }
+        }
+
+        // Funções utilitárias
         function calculateLevel(xp) {
             return Math.floor(xp / 100) + 1;
         }
@@ -151,11 +270,18 @@
             
             document.body.appendChild(notification);
             
+            // Vibrar para notificações de sucesso
+            if (type === 'success') {
+                vibrateDevice([100, 50, 100]);
+            } else {
+                vibrateDevice([300]);
+            }
+            
             setTimeout(() => {
                 if (notification.parentNode) {
                     notification.parentNode.removeChild(notification);
                 }
-            }, 3000);
+            }, 4000);
         }
 
         function createDefaultActivitiesForChild(childId) {
@@ -194,7 +320,6 @@
                     } : u
                 );
                 
-                // Atualizar usuário atual se for ele
                 if (appState.currentUser && appState.currentUser.id === user.id) {
                     appState.currentUser.achievements = [...(appState.currentUser.achievements || []), ...newAchievements];
                 }
@@ -204,6 +329,9 @@
                 ).join(', ');
                 
                 setTimeout(() => {
+                    // Vibração especial para conquistas
+                    vibrateDevice([200, 100, 200, 100, 400]);
+                    playSuccessSound();
                     showNotification('🏆 Nova conquista desbloqueada: ' + achievementNames + '!');
                 }, 1000);
             }
@@ -212,6 +340,12 @@
         function handleLogin() {
             if (!loginForm.name.trim()) {
                 showNotification('Por favor, digite seu nome!', 'error');
+                // Adicionar shake ao campo de input
+                const input = document.getElementById('login-name');
+                if (input) {
+                    input.classList.add('shake');
+                    setTimeout(() => input.classList.remove('shake'), 500);
+                }
                 return;
             }
 
@@ -221,7 +355,6 @@
                 appState.currentUser = existingUser;
                 showNotification('Olá novamente, ' + existingUser.name + '! 😊');
             } else {
-                // Detectar automaticamente se é criança ou responsável baseado no nome
                 const isParent = loginForm.name.toLowerCase().includes('pai') || 
                                loginForm.name.toLowerCase().includes('mãe') || 
                                loginForm.name.toLowerCase().includes('responsável');
@@ -229,7 +362,7 @@
                 const newUser = {
                     id: Date.now(),
                     name: loginForm.name.trim(),
-                    type: isParent ? 'parent' : 'child',
+                    type: loginForm.type,
                     xp: 0,
                     mascot: loginForm.mascot,
                     achievements: [],
@@ -277,25 +410,37 @@
                 a.id === activityId ? { ...a, status: 'completed' } : a
             );
 
-            // Adicionar XP ao usuário
             appState.users = appState.users.map(u => 
                 u.id === activity.userId ? { ...u, xp: u.xp + activity.points } : u
             );
 
-            // Atualizar usuário atual
             if (appState.currentUser && appState.currentUser.id === activity.userId) {
                 appState.currentUser.xp += activity.points;
             }
 
-            // Verificar conquistas
+            // Efeitos especiais para conclusão
+            const activityElement = document.querySelector(`[data-activity-id="${activityId}"]`);
+            if (activityElement) {
+                activityElement.classList.add('celebrate');
+                createConfetti(activityElement.parentElement);
+            }
+
+            // Vibração de sucesso mais forte
+            vibrateDevice([100, 50, 100, 50, 200]);
+            playSuccessSound();
+
             const user = appState.users.find(u => u.id === activity.userId);
             checkAchievements(user);
 
             const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
             showNotification(randomMessage + ' +' + activity.points + ' XP!');
-            
+
             saveToLocalStorage();
-            render();
+            
+            // Re-render após um pequeno delay para mostrar animação
+            setTimeout(() => {
+                render();
+            }, 600);
         }
 
         function showAddActivityModal() {
@@ -410,17 +555,16 @@
                                 id="login-name"
                                 placeholder="Digite seu nome"
                                 value="${loginForm.name}"
-                                class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
                             />
 
-                            <!-- Seleção de tipo de usuário -->
                             <div class="space-y-2">
                                 <p class="text-sm text-gray-600">Você é:</p>
                                 <div class="flex space-x-3">
                                     <button
                                         onclick="selectUserType('child')"
-                                        class="flex-1 p-3 rounded-xl border-2 transition-colors ${
-                                            loginForm.type === 'child' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                        class="flex-1 p-3 rounded-xl border-2 transition-all duration-200 ${
+                                            loginForm.type === 'child' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                         }"
                                     >
                                         <div class="text-2xl mb-1">👶</div>
@@ -428,8 +572,8 @@
                                     </button>
                                     <button
                                         onclick="selectUserType('parent')"
-                                        class="flex-1 p-3 rounded-xl border-2 transition-colors ${
-                                            loginForm.type === 'parent' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                        class="flex-1 p-3 rounded-xl border-2 transition-all duration-200 ${
+                                            loginForm.type === 'parent' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                         }"
                                     >
                                         <div class="text-2xl mb-1">👨‍👩‍👧‍👦</div>
@@ -441,16 +585,16 @@
                             ${loginForm.type === 'child' ? `
                                 <div>
                                     <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
-                                    <div class="flex space-x-3">
+                                    <div class="grid grid-cols-3 gap-2">
                                         ${Object.entries(mascots).map(([key, mascot]) => `
                                             <button
                                                 onclick="selectMascot('${key}')"
-                                                class="flex-1 p-3 rounded-xl border-2 transition-colors ${
-                                                    loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                                class="p-3 rounded-xl border-2 transition-all duration-200 ${
+                                                    loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                 }"
                                             >
-                                                <div class="text-2xl mb-1">${mascot.emoji}</div>
-                                                <div class="text-sm">${mascot.name}</div>
+                                                <div class="text-2xl mb-1 ${loginForm.mascot === key ? 'dance' : ''}">${mascot.emoji}</div>
+                                                <div class="text-xs">${mascot.name}</div>
                                             </button>
                                         `).join('')}
                                     </div>
@@ -461,7 +605,7 @@
                                 onclick="handleLogin()"
                                 class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
                             >
-                                Entrar
+                                🚀 Entrar
                             </button>
                         </div>
                     </div>
@@ -482,19 +626,19 @@
             const xpForNext = getXpForNextLevel(appState.currentUser.xp);
 
             return `
-                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
+                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4 relative">
                     <div class="max-w-4xl mx-auto">
                         <!-- Header -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
                             <div class="flex items-center justify-between mb-4">
                                 <div class="flex items-center space-x-3">
-                                    <div class="text-4xl">${currentMascot.emoji}</div>
+                                    <div class="text-4xl ${completedToday > 0 ? 'dance' : ''}">${currentMascot.emoji}</div>
                                     <div>
                                         <h1 class="text-2xl font-bold text-gray-800">Olá, ${appState.currentUser.name}!</h1>
                                         <p class="text-gray-600">${currentMascot.name} está torcendo por você!</p>
                                     </div>
                                 </div>
-                                <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100">
+                                <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors">
                                     ↩️ Sair
                                 </button>
                             </div>
@@ -540,7 +684,7 @@
 
                         <!-- Atividades de Hoje -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 slide-up">
-                            <h2 class="text-xl font-bold text-gray-800 mb-4">Atividades de Hoje</h2>
+                            <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Atividades de Hoje</h2>
                             <div class="mb-4">
                                 <div class="flex justify-between text-sm text-gray-600 mb-1">
                                     <span>Progresso do dia</span>
@@ -560,7 +704,7 @@
                                 ` : todayActivities.map(activity => `
                                     <div class="p-4 rounded-xl border-2 ${
                                         activity.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-                                    } fade-in">
+                                    } fade-in relative" data-activity-id="${activity.id}">
                                         <div class="flex items-center justify-between">
                                             <div class="flex-1">
                                                 <h3 class="font-semibold text-gray-800">${activity.name}</h3>
@@ -573,13 +717,13 @@
                                             ${activity.status === 'pending' ? `
                                                 <button
                                                     onclick="completeActivity(${activity.id})"
-                                                    class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
+                                                    class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-200 font-medium hover:scale-105"
                                                 >
                                                     ✓ Concluir
                                                 </button>
                                             ` : `
                                                 <div class="text-green-600 font-medium flex items-center space-x-1">
-                                                    <span>✅</span>
+                                                    <span class="text-lg">✅</span>
                                                     <span>Concluída</span>
                                                 </div>
                                             `}
@@ -629,14 +773,14 @@
                                 <div class="flex space-x-2">
                                     <button
                                         onclick="showAddActivityModal()"
-                                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2 transition-colors"
+                                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2 transition-all duration-200 hover:scale-105"
                                     >
                                         <span>➕</span>
                                         <span>Nova Atividade</span>
                                     </button>
                                     <button
                                         onclick="logout()"
-                                        class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
+                                        class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
                                     >
                                         ↩️
                                     </button>
@@ -656,9 +800,9 @@
                                 const mascot = mascots[child.mascot];
                                 
                                 return `
-                                    <div class="bg-white rounded-2xl shadow-lg p-6 slide-up">
+                                    <div class="bg-white rounded-2xl shadow-lg p-6 slide-up hover:shadow-xl transition-shadow duration-200">
                                         <div class="flex items-center space-x-3 mb-4">
-                                            <div class="text-3xl">${mascot.emoji}</div>
+                                            <div class="text-3xl ${completedToday > 0 ? 'dance' : ''}">${mascot.emoji}</div>
                                             <div>
                                                 <h3 class="font-bold text-gray-800">${child.name}</h3>
                                                 <p class="text-sm text-gray-600">Nível ${calculateLevel(child.xp)}</p>
@@ -717,7 +861,7 @@
                                         <select
                                             id="activity-target"
                                             value="${activityForm.targetUserId}"
-                                            class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                            class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
                                         >
                                             <option value="">👶 Selecione a criança</option>
                                             ${childUsers.map(child => `
@@ -736,13 +880,13 @@
                                         id="activity-name"
                                         placeholder="📝 Nome da atividade"
                                         value="${activityForm.name}"
-                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
                                     />
                                     <textarea
                                         id="activity-description"
                                         placeholder="📋 Descrição da atividade"
                                         value="${activityForm.description}"
-                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
                                         rows="3"
                                     ></textarea>
                                     <input
@@ -750,7 +894,7 @@
                                         id="activity-points"
                                         placeholder="⚡ Pontos XP"
                                         value="${activityForm.points}"
-                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
                                         min="1"
                                         max="100"
                                     />
@@ -762,7 +906,7 @@
                                             ${defaultActivities.slice(0, 6).map(activity => `
                                                 <button
                                                     onclick="fillActivitySuggestion('${activity.name}', '${activity.description}', ${activity.points})"
-                                                    class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                                                    class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-all duration-200 hover:scale-105"
                                                 >
                                                     <div class="text-xs font-medium text-gray-800">${activity.name}</div>
                                                     <div class="text-xs text-gray-500">⚡ ${activity.points} XP</div>
@@ -774,7 +918,7 @@
                                     <div class="flex space-x-3">
                                         <button
                                             onclick="addActivity()"
-                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors ${
+                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-all duration-200 hover:scale-105 ${
                                                 childUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                                             }"
                                             ${childUsers.length === 0 ? 'disabled' : ''}
@@ -783,7 +927,7 @@
                                         </button>
                                         <button
                                             onclick="hideAddActivityModal()"
-                                            class="flex-1 bg-gray-500 text-white p-3 rounded-xl font-semibold hover:bg-gray-600 transition-colors"
+                                            class="flex-1 bg-gray-500 text-white p-3 rounded-xl font-semibold hover:bg-gray-600 transition-all duration-200 hover:scale-105"
                                         >
                                             ❌ Cancelar
                                         </button>
