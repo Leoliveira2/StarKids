@@ -15,9 +15,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -42,13 +39,22 @@
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+        .pulse-success {
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script>
-        // Estado Global da Aplicação
         let appState = {
             currentUser: null,
             users: [],
@@ -57,7 +63,6 @@
             showAddActivity: false
         };
 
-        // Estado dos formulários
         let loginForm = {
             name: '',
             type: 'child',
@@ -72,7 +77,6 @@
             targetUserId: ''
         };
 
-        // Configurações
         const mascots = {
             star: { name: 'Stella', emoji: '⭐' },
             dragon: { name: 'Drako', emoji: '🐉' },
@@ -80,22 +84,21 @@
         };
 
         const motivationalMessages = [
-            'Você está indo muito bem! Continue assim! ⭐',
-            'Que orgulho de você! Mais uma atividade concluída! 🎉',
-            'Uau! Você está se tornando um super herói das tarefas! 💪',
-            'Incrível! Seus pais devem estar muito orgulhosos! 🌟',
-            'Você é demais! Continue brilhando! ✨'
+            'Parabéns! Você está arrasando! ⭐',
+            'Que orgulho! Mais uma conquista! 🎉',
+            'Uau! Você é incrível! 💪',
+            'Fantástico! Continue assim! 🌟',
+            'Você é demais! Brilhando sempre! ✨'
         ];
 
         const achievements = [
-            { id: 1, name: 'Primeiro Passo', description: 'Complete sua primeira atividade', icon: '🎯' },
-            { id: 2, name: 'Em Chamas', description: 'Mantenha 3 dias consecutivos', icon: '🔥' },
-            { id: 3, name: 'Super Estrela', description: 'Alcance o nível 5', icon: '⭐' },
-            { id: 4, name: 'Imparável', description: 'Complete 10 atividades', icon: '🚀' },
-            { id: 5, name: 'Lenda', description: 'Mantenha 7 dias consecutivos', icon: '👑' }
+            { id: 1, name: 'Primeiro Passo', description: 'Complete sua primeira atividade', points: 1, icon: '🎯' },
+            { id: 2, name: 'Dedicado', description: 'Complete 5 atividades', points: 5, icon: '📚' },
+            { id: 3, name: 'Super Estrela', description: 'Complete 10 atividades', points: 10, icon: '⭐' },
+            { id: 4, name: 'Imparável', description: 'Complete 20 atividades', points: 20, icon: '🚀' },
+            { id: 5, name: 'Lenda', description: 'Complete 50 atividades', points: 50, icon: '👑' }
         ];
 
-        // Atividades padrão para crianças
         const defaultActivities = [
             { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15 },
             { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10 },
@@ -114,10 +117,9 @@
             return Math.floor(xp / 100) + 1;
         }
 
-        function calculateStreak(userId) {
-            const userActivities = appState.activities.filter(a => a.userId === userId && a.status === 'completed');
-            if (userActivities.length === 0) return 0;
-            return userActivities.length; // Simplificado por enquanto
+        function getXpForNextLevel(xp) {
+            const currentLevel = calculateLevel(xp);
+            return currentLevel * 100 - xp;
         }
 
         function saveToLocalStorage() {
@@ -169,18 +171,65 @@
             }));
         }
 
-        // Funções principais
+        function checkAchievements(user) {
+            const completedActivities = appState.activities.filter(a => 
+                a.userId === user.id && a.status === 'completed'
+            ).length;
+
+            const newAchievements = [];
+            
+            achievements.forEach(achievement => {
+                if (user.achievements && user.achievements.includes(achievement.id)) return;
+                
+                if (completedActivities >= achievement.points) {
+                    newAchievements.push(achievement.id);
+                }
+            });
+            
+            if (newAchievements.length > 0) {
+                appState.users = appState.users.map(u => 
+                    u.id === user.id ? { 
+                        ...u, 
+                        achievements: [...(u.achievements || []), ...newAchievements] 
+                    } : u
+                );
+                
+                // Atualizar usuário atual se for ele
+                if (appState.currentUser && appState.currentUser.id === user.id) {
+                    appState.currentUser.achievements = [...(appState.currentUser.achievements || []), ...newAchievements];
+                }
+                
+                const achievementNames = newAchievements.map(id => 
+                    achievements.find(a => a.id === id).name
+                ).join(', ');
+                
+                setTimeout(() => {
+                    showNotification('🏆 Nova conquista desbloqueada: ' + achievementNames + '!');
+                }, 1000);
+            }
+        }
+
         function handleLogin() {
             if (!loginForm.name.trim()) {
                 showNotification('Por favor, digite seu nome!', 'error');
                 return;
             }
 
-            if (loginForm.isRegistering) {
+            const existingUser = appState.users.find(u => u.name.toLowerCase() === loginForm.name.toLowerCase());
+            
+            if (existingUser) {
+                appState.currentUser = existingUser;
+                showNotification('Olá novamente, ' + existingUser.name + '! 😊');
+            } else {
+                // Detectar automaticamente se é criança ou responsável baseado no nome
+                const isParent = loginForm.name.toLowerCase().includes('pai') || 
+                               loginForm.name.toLowerCase().includes('mãe') || 
+                               loginForm.name.toLowerCase().includes('responsável');
+                
                 const newUser = {
                     id: Date.now(),
                     name: loginForm.name.trim(),
-                    type: loginForm.type,
+                    type: isParent ? 'parent' : 'child',
                     xp: 0,
                     mascot: loginForm.mascot,
                     achievements: [],
@@ -188,33 +237,23 @@
                 };
                 appState.users.push(newUser);
                 appState.currentUser = newUser;
-                
-                // Se for criança, criar atividades padrão
+
                 if (newUser.type === 'child') {
                     const defaultActivitiesForChild = createDefaultActivitiesForChild(newUser.id);
                     appState.activities.push(...defaultActivitiesForChild);
-                    showNotification('Bem-vindo(a), ' + newUser.name + '! Suas atividades diárias foram criadas!');
+                    showNotification('Bem-vindo(a), ' + newUser.name + '! Suas atividades foram criadas! 🎉');
                 } else {
-                    showNotification('Bem-vindo(a), ' + newUser.name + '!');
-                }
-            } else {
-                const user = appState.users.find(u => u.name.toLowerCase() === loginForm.name.toLowerCase());
-                if (user) {
-                    appState.currentUser = user;
-                    showNotification('Olá novamente, ' + user.name + '!');
-                } else {
-                    showNotification('Usuário não encontrado. Registre-se primeiro!', 'error');
-                    return;
+                    showNotification('Bem-vindo(a), ' + newUser.name + '! 👋');
                 }
             }
-            
+
             appState.showLogin = false;
             saveToLocalStorage();
             render();
         }
 
-        function toggleRegistering() {
-            loginForm.isRegistering = !loginForm.isRegistering;
+        function selectUserType(type) {
+            loginForm.type = type;
             render();
         }
 
@@ -231,41 +270,30 @@
         }
 
         function completeActivity(activityId) {
-            appState.activities = appState.activities.map(a => 
-                a.id === activityId ? { ...a, status: 'pending_approval' } : a
-            );
-            
-            const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-            showNotification(randomMessage);
-            saveToLocalStorage();
-            render();
-        }
-
-        function approveActivity(activityId, approve) {
             const activity = appState.activities.find(a => a.id === activityId);
             if (!activity) return;
 
             appState.activities = appState.activities.map(a => 
-                a.id === activityId ? { ...a, status: approve ? 'completed' : 'pending' } : a
+                a.id === activityId ? { ...a, status: 'completed' } : a
             );
 
-            if (approve) {
-                // Adicionar XP ao usuário
-                appState.users = appState.users.map(u => 
-                    u.id === activity.userId ? { ...u, xp: u.xp + activity.points } : u
-                );
+            // Adicionar XP ao usuário
+            appState.users = appState.users.map(u => 
+                u.id === activity.userId ? { ...u, xp: u.xp + activity.points } : u
+            );
 
-                // Atualizar usuário atual se for ele
-                if (appState.currentUser && appState.currentUser.id === activity.userId) {
-                    appState.currentUser.xp += activity.points;
-                }
-
-                const user = appState.users.find(u => u.id === activity.userId);
-                showNotification('Atividade aprovada! ' + user.name + ' ganhou ' + activity.points + ' XP!');
-            } else {
-                showNotification('Atividade rejeitada.');
+            // Atualizar usuário atual
+            if (appState.currentUser && appState.currentUser.id === activity.userId) {
+                appState.currentUser.xp += activity.points;
             }
 
+            // Verificar conquistas
+            const user = appState.users.find(u => u.id === activity.userId);
+            checkAchievements(user);
+
+            const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+            showNotification(randomMessage + ' +' + activity.points + ' XP!');
+            
             saveToLocalStorage();
             render();
         }
@@ -283,7 +311,7 @@
 
         function addActivity() {
             if (!activityForm.name.trim() || !activityForm.targetUserId) {
-                showNotification('Preencha todos os campos obrigatórios!', 'error');
+                showNotification('Preencha todos os campos!', 'error');
                 return;
             }
 
@@ -299,7 +327,7 @@
 
             appState.activities.push(activity);
             appState.showAddActivity = false;
-            showNotification('Atividade adicionada com sucesso!');
+            showNotification('Atividade adicionada! 🎯');
             saveToLocalStorage();
             render();
         }
@@ -311,7 +339,62 @@
             render();
         }
 
-        // Componentes
+        function render() {
+            try {
+                const app = document.getElementById('app');
+                if (!app) return;
+
+                if (appState.showLogin || !appState.currentUser) {
+                    app.innerHTML = LoginScreen();
+                } else if (appState.currentUser.type === 'child') {
+                    app.innerHTML = ChildDashboard();
+                } else {
+                    app.innerHTML = ParentDashboard();
+                }
+
+                setupInputListeners();
+            } catch (e) {
+                console.error('Erro no render:', e);
+            }
+        }
+
+        function setupInputListeners() {
+            const loginNameInput = document.getElementById('login-name');
+            if (loginNameInput) {
+                loginNameInput.addEventListener('input', (e) => {
+                    loginForm.name = e.target.value;
+                });
+            }
+
+            const activityNameInput = document.getElementById('activity-name');
+            if (activityNameInput) {
+                activityNameInput.addEventListener('input', (e) => {
+                    activityForm.name = e.target.value;
+                });
+            }
+
+            const activityDescInput = document.getElementById('activity-description');
+            if (activityDescInput) {
+                activityDescInput.addEventListener('input', (e) => {
+                    activityForm.description = e.target.value;
+                });
+            }
+
+            const activityPointsInput = document.getElementById('activity-points');
+            if (activityPointsInput) {
+                activityPointsInput.addEventListener('input', (e) => {
+                    activityForm.points = parseInt(e.target.value) || 10;
+                });
+            }
+
+            const activityTargetSelect = document.getElementById('activity-target');
+            if (activityTargetSelect) {
+                activityTargetSelect.addEventListener('change', (e) => {
+                    activityForm.targetUserId = e.target.value;
+                });
+            }
+        }
+
         function LoginScreen() {
             return `
                 <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
@@ -330,48 +413,55 @@
                                 class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                             />
 
-                            ${loginForm.isRegistering ? `
-                                <select
-                                    id="login-type"
-                                    value="${loginForm.type}"
-                                    class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                                >
-                                    <option value="child">Criança</option>
-                                    <option value="parent">Pai/Responsável</option>
-                                </select>
+                            <!-- Seleção de tipo de usuário -->
+                            <div class="space-y-2">
+                                <p class="text-sm text-gray-600">Você é:</p>
+                                <div class="flex space-x-3">
+                                    <button
+                                        onclick="selectUserType('child')"
+                                        class="flex-1 p-3 rounded-xl border-2 transition-colors ${
+                                            loginForm.type === 'child' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                        }"
+                                    >
+                                        <div class="text-2xl mb-1">👶</div>
+                                        <div class="text-sm">Criança</div>
+                                    </button>
+                                    <button
+                                        onclick="selectUserType('parent')"
+                                        class="flex-1 p-3 rounded-xl border-2 transition-colors ${
+                                            loginForm.type === 'parent' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                        }"
+                                    >
+                                        <div class="text-2xl mb-1">👨‍👩‍👧‍👦</div>
+                                        <div class="text-sm">Responsável</div>
+                                    </button>
+                                </div>
+                            </div>
 
-                                ${loginForm.type === 'child' ? `
-                                    <div>
-                                        <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
-                                        <div class="flex space-x-3">
-                                            ${Object.entries(mascots).map(([key, mascot]) => `
-                                                <button
-                                                    onclick="selectMascot('${key}')"
-                                                    class="flex-1 p-3 rounded-xl border-2 transition-colors ${
-                                                        loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                                                    }"
-                                                >
-                                                    <div class="text-2xl mb-1">${mascot.emoji}</div>
-                                                    <div class="text-sm">${mascot.name}</div>
-                                                </button>
-                                            `).join('')}
-                                        </div>
+                            ${loginForm.type === 'child' ? `
+                                <div>
+                                    <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
+                                    <div class="flex space-x-3">
+                                        ${Object.entries(mascots).map(([key, mascot]) => `
+                                            <button
+                                                onclick="selectMascot('${key}')"
+                                                class="flex-1 p-3 rounded-xl border-2 transition-colors ${
+                                                    loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                                                }"
+                                            >
+                                                <div class="text-2xl mb-1">${mascot.emoji}</div>
+                                                <div class="text-sm">${mascot.name}</div>
+                                            </button>
+                                        `).join('')}
                                     </div>
-                                ` : ''}
+                                </div>
                             ` : ''}
 
                             <button
                                 onclick="handleLogin()"
                                 class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
                             >
-                                ${loginForm.isRegistering ? 'Registrar' : 'Entrar'}
-                            </button>
-
-                            <button
-                                onclick="toggleRegistering()"
-                                class="w-full text-blue-500 hover:text-blue-600 font-medium transition-colors"
-                            >
-                                ${loginForm.isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+                                Entrar
                             </button>
                         </div>
                     </div>
@@ -387,6 +477,9 @@
             const completedToday = todayActivities.filter(a => a.status === 'completed').length;
             const totalToday = todayActivities.length;
             const currentMascot = mascots[appState.currentUser.mascot];
+            const completedTotal = userActivities.filter(a => a.status === 'completed').length;
+            const currentLevel = calculateLevel(appState.currentUser.xp);
+            const xpForNext = getXpForNextLevel(appState.currentUser.xp);
 
             return `
                 <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
@@ -402,7 +495,7 @@
                                     </div>
                                 </div>
                                 <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100">
-                                    ↩️
+                                    ↩️ Sair
                                 </button>
                             </div>
 
@@ -415,18 +508,32 @@
                                 </div>
                                 <div class="bg-blue-100 p-4 rounded-xl text-center">
                                     <div class="text-2xl mb-2">🎯</div>
-                                    <div class="text-2xl font-bold text-blue-800">${calculateLevel(appState.currentUser.xp)}</div>
+                                    <div class="text-2xl font-bold text-blue-800">${currentLevel}</div>
                                     <div class="text-sm text-blue-600">Nível</div>
                                 </div>
                                 <div class="bg-green-100 p-4 rounded-xl text-center">
-                                    <div class="text-2xl mb-2">📅</div>
-                                    <div class="text-2xl font-bold text-green-800">${calculateStreak(appState.currentUser.id)}</div>
-                                    <div class="text-sm text-green-600">Atividades</div>
+                                    <div class="text-2xl mb-2">✅</div>
+                                    <div class="text-2xl font-bold text-green-800">${completedTotal}</div>
+                                    <div class="text-sm text-green-600">Concluídas</div>
                                 </div>
                                 <div class="bg-purple-100 p-4 rounded-xl text-center">
                                     <div class="text-2xl mb-2">🏆</div>
                                     <div class="text-2xl font-bold text-purple-800">${(appState.currentUser.achievements || []).length}</div>
                                     <div class="text-sm text-purple-600">Conquistas</div>
+                                </div>
+                            </div>
+
+                            <!-- Progresso para próximo nível -->
+                            <div class="mt-4 p-3 bg-gray-50 rounded-xl">
+                                <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                    <span>Próximo nível</span>
+                                    <span>Faltam ${xpForNext} XP</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        class="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                                        style="width: ${((appState.currentUser.xp % 100) / 100) * 100}%"
+                                    ></div>
                                 </div>
                             </div>
                         </div>
@@ -436,7 +543,7 @@
                             <h2 class="text-xl font-bold text-gray-800 mb-4">Atividades de Hoje</h2>
                             <div class="mb-4">
                                 <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                    <span>Progresso</span>
+                                    <span>Progresso do dia</span>
                                     <span>${completedToday}/${totalToday}</span>
                                 </div>
                                 <div class="w-full bg-gray-200 rounded-full h-3">
@@ -449,12 +556,10 @@
 
                             <div class="space-y-3">
                                 ${todayActivities.length === 0 ? `
-                                    <p class="text-gray-500 text-center py-8">Nenhuma atividade para hoje. Peça para seus pais adicionarem algumas!</p>
+                                    <p class="text-gray-500 text-center py-8">🎯 Nenhuma atividade para hoje. Que tal pedir para seus pais adicionarem algumas?</p>
                                 ` : todayActivities.map(activity => `
                                     <div class="p-4 rounded-xl border-2 ${
-                                        activity.status === 'completed' ? 'bg-green-50 border-green-200' :
-                                        activity.status === 'pending_approval' ? 'bg-yellow-50 border-yellow-200' :
-                                        'bg-gray-50 border-gray-200'
+                                        activity.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
                                     } fade-in">
                                         <div class="flex items-center justify-between">
                                             <div class="flex-1">
@@ -468,28 +573,48 @@
                                             ${activity.status === 'pending' ? `
                                                 <button
                                                     onclick="completeActivity(${activity.id})"
-                                                    class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition-colors"
+                                                    class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors font-medium"
                                                 >
-                                                    ✓
+                                                    ✓ Concluir
                                                 </button>
-                                            ` : activity.status === 'pending_approval' ? `
-                                                <div class="text-yellow-600 font-medium">Aguardando aprovação</div>
                                             ` : `
-                                                <div class="text-green-600 font-medium">✅ Concluída</div>
+                                                <div class="text-green-600 font-medium flex items-center space-x-1">
+                                                    <span>✅</span>
+                                                    <span>Concluída</span>
+                                                </div>
                                             `}
                                         </div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
+
+                        <!-- Conquistas -->
+                        ${(appState.currentUser.achievements || []).length > 0 ? `
+                            <div class="bg-white rounded-2xl shadow-lg p-6">
+                                <h2 class="text-xl font-bold text-gray-800 mb-4">🏆 Suas Conquistas</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    ${achievements.filter(a => (appState.currentUser.achievements || []).includes(a.id)).map(achievement => `
+                                        <div class="p-4 rounded-xl bg-yellow-50 border-2 border-yellow-200 fade-in">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="text-2xl">${achievement.icon}</div>
+                                                <div>
+                                                    <h3 class="font-semibold text-yellow-800">${achievement.name}</h3>
+                                                    <p class="text-sm text-yellow-600">${achievement.description}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
         }
 
         function ParentDashboard() {
-            const allChildUsers = appState.users.filter(u => u.type === 'child');
-            const pendingActivities = appState.activities.filter(a => a.status === 'pending_approval');
+            const childUsers = appState.users.filter(u => u.type === 'child');
 
             return `
                 <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
@@ -498,8 +623,8 @@
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <h1 class="text-2xl font-bold text-gray-800">Painel dos Pais</h1>
-                                    <p class="text-gray-600">Gerencie as atividades das crianças</p>
+                                    <h1 class="text-2xl font-bold text-gray-800">👨‍👩‍👧‍👦 Painel dos Responsáveis</h1>
+                                    <p class="text-gray-600">Acompanhe e gerencie as atividades das crianças</p>
                                 </div>
                                 <div class="flex space-x-2">
                                     <button
@@ -519,10 +644,15 @@
                             </div>
                         </div>
 
-                        <!-- Crianças Overview -->
+                        <!-- Resumo das Crianças -->
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                            ${allChildUsers.map(child => {
-                                const childActivities = appState.activities.filter(a => a.userId === child.id && a.status === 'completed');
+                            ${childUsers.map(child => {
+                                const childActivities = appState.activities.filter(a => a.userId === child.id);
+                                const completedActivities = childActivities.filter(a => a.status === 'completed');
+                                const todayActivities = childActivities.filter(a => 
+                                    new Date(a.date).toDateString() === new Date().toDateString()
+                                );
+                                const completedToday = todayActivities.filter(a => a.status === 'completed').length;
                                 const mascot = mascots[child.mascot];
                                 
                                 return `
@@ -536,92 +666,81 @@
                                         </div>
                                         <div class="space-y-2">
                                             <div class="flex justify-between">
-                                                <span class="text-sm text-gray-600">XP:</span>
-                                                <span class="font-semibold">${child.xp}</span>
+                                                <span class="text-sm text-gray-600">XP Total:</span>
+                                                <span class="font-semibold text-yellow-600">${child.xp} ⚡</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-sm text-gray-600">Atividades:</span>
-                                                <span class="font-semibold">${childActivities.length}</span>
+                                                <span class="text-sm text-gray-600">Hoje:</span>
+                                                <span class="font-semibold text-green-600">${completedToday}/${todayActivities.length}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-sm text-gray-600">Total concluídas:</span>
+                                                <span class="font-semibold text-blue-600">${completedActivities.length}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-sm text-gray-600">Conquistas:</span>
+                                                <span class="font-semibold text-purple-600">${(child.achievements || []).length} 🏆</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Progresso do dia -->
+                                        <div class="mt-4">
+                                            <div class="text-xs text-gray-500 mb-1">Progresso de hoje</div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    class="bg-green-500 h-2 rounded-full transition-all duration-500"
+                                                    style="width: ${todayActivities.length > 0 ? (completedToday / todayActivities.length) * 100 : 0}%"
+                                                ></div>
                                             </div>
                                         </div>
                                     </div>
                                 `;
                             }).join('')}
-                        </div>
-
-                        <!-- Aprovações Pendentes -->
-                        ${pendingActivities.length > 0 ? `
-                            <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 slide-up">
-                                <h2 class="text-xl font-bold text-gray-800 mb-4">Atividades Aguardando Aprovação</h2>
-                                <div class="space-y-3">
-                                    ${pendingActivities.map(activity => {
-                                        const child = appState.users.find(u => u.id === activity.userId);
-                                        return `
-                                            <div class="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl fade-in">
-                                                <div class="flex items-center justify-between">
-                                                    <div class="flex-1">
-                                                        <div class="flex items-center space-x-2 mb-1">
-                                                            <h3 class="font-semibold text-gray-800">${activity.name}</h3>
-                                                            <span class="text-sm text-gray-500">- ${child ? child.name : 'Criança'}</span>
-                                                        </div>
-                                                        <p class="text-sm text-gray-600">${activity.description}</p>
-                                                        <div class="flex items-center space-x-2 mt-1">
-                                                            <span class="text-yellow-500">⚡</span>
-                                                            <span class="text-sm text-yellow-600">${activity.points} XP</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="flex space-x-2">
-                                                        <button
-                                                            onclick="approveActivity(${activity.id}, true)"
-                                                            class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition-colors"
-                                                            title="Aprovar"
-                                                        >
-                                                            ✓
-                                                        </button>
-                                                        <button
-                                                            onclick="approveActivity(${activity.id}, false)"
-                                                            class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
-                                                            title="Rejeitar"
-                                                        >
-                                                            ✗
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        `;
-                                    }).join('')}
+                            
+                            ${childUsers.length === 0 ? `
+                                <div class="col-span-full bg-white rounded-2xl shadow-lg p-8 text-center">
+                                    <div class="text-4xl mb-4">👶</div>
+                                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Nenhuma criança cadastrada</h3>
+                                    <p class="text-gray-600">Peça para as crianças se cadastrarem primeiro!</p>
                                 </div>
-                            </div>
-                        ` : ''}
+                            ` : ''}
+                        </div>
                     </div>
 
                     <!-- Modal para Adicionar Atividade -->
                     ${appState.showAddActivity ? `
                         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in">
                             <div class="bg-white rounded-2xl p-6 max-w-md w-full slide-up">
-                                <h2 class="text-xl font-bold text-gray-800 mb-4">Nova Atividade</h2>
+                                <h2 class="text-xl font-bold text-gray-800 mb-4">➕ Nova Atividade</h2>
                                 <div class="space-y-4">
-                                    <select
-                                        id="activity-target"
-                                        value="${activityForm.targetUserId}"
-                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                                    >
-                                        <option value="">Selecione a criança</option>
-                                        ${allChildUsers.map(child => `
-                                            <option value="${child.id}">${child.name}</option>
-                                        `).join('')}
-                                    </select>
+                                    ${childUsers.length > 0 ? `
+                                        <select
+                                            id="activity-target"
+                                            value="${activityForm.targetUserId}"
+                                            class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                        >
+                                            <option value="">👶 Selecione a criança</option>
+                                            ${childUsers.map(child => `
+                                                <option value="${child.id}">${child.name} ${mascots[child.mascot].emoji}</option>
+                                            `).join('')}
+                                        </select>
+                                    ` : `
+                                        <div class="p-4 bg-red-50 border-2 border-red-200 rounded-xl text-center">
+                                            <div class="text-red-800 font-semibold">Nenhuma criança cadastrada</div>
+                                            <div class="text-sm text-red-600">Peça para as crianças se cadastrarem primeiro</div>
+                                        </div>
+                                    `}
                                     
                                     <input
                                         type="text"
                                         id="activity-name"
-                                        placeholder="Nome da atividade"
+                                        placeholder="📝 Nome da atividade"
                                         value="${activityForm.name}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                     />
                                     <textarea
                                         id="activity-description"
-                                        placeholder="Descrição da atividade"
+                                        placeholder="📋 Descrição da atividade"
                                         value="${activityForm.description}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         rows="3"
@@ -629,7 +748,7 @@
                                     <input
                                         type="number"
                                         id="activity-points"
-                                        placeholder="Pontos XP"
+                                        placeholder="⚡ Pontos XP"
                                         value="${activityForm.points}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         min="1"
@@ -646,7 +765,7 @@
                                                     class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                                                 >
                                                     <div class="text-xs font-medium text-gray-800">${activity.name}</div>
-                                                    <div class="text-xs text-gray-500">${activity.points} XP</div>
+                                                    <div class="text-xs text-gray-500">⚡ ${activity.points} XP</div>
                                                 </button>
                                             `).join('')}
                                         </div>
@@ -655,15 +774,18 @@
                                     <div class="flex space-x-3">
                                         <button
                                             onclick="addActivity()"
-                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors ${
+                                                childUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                                            }"
+                                            ${childUsers.length === 0 ? 'disabled' : ''}
                                         >
-                                            Adicionar
+                                            ➕ Adicionar
                                         </button>
                                         <button
                                             onclick="hideAddActivityModal()"
                                             class="flex-1 bg-gray-500 text-white p-3 rounded-xl font-semibold hover:bg-gray-600 transition-colors"
                                         >
-                                            Cancelar
+                                            ❌ Cancelar
                                         </button>
                                     </div>
                                 </div>
@@ -674,121 +796,20 @@
             `;
         }
 
-        // Renderização Principal
-        function render() {
-            try {
-                const app = document.getElementById('app');
-                if (!app) return;
-                
-                if (appState.showLogin || !appState.currentUser) {
-                    app.innerHTML = LoginScreen();
-                } else if (appState.currentUser.type === 'child') {
-                    app.innerHTML = ChildDashboard();
-                } else {
-                    app.innerHTML = ParentDashboard();
-                }
-
-                // Configurar event listeners para inputs
-                setupInputListeners();
-            } catch (e) {
-                console.error('Erro no render:', e);
-                document.getElementById('app').innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-                            <h1 class="text-2xl font-bold text-red-600 mb-4">Erro</h1>
-                            <p class="text-gray-600 mb-4">Houve um problema. Tente recarregar a página.</p>
-                            <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
-                                Recarregar
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
-        }
-
-        // Configurar listeners para inputs sem causar re-render
-        function setupInputListeners() {
-            try {
-                // Login form listeners
-                const loginNameInput = document.getElementById('login-name');
-                if (loginNameInput) {
-                    loginNameInput.addEventListener('input', (e) => {
-                        loginForm.name = e.target.value;
-                    });
-                }
-
-                const loginTypeSelect = document.getElementById('login-type');
-                if (loginTypeSelect) {
-                    loginTypeSelect.addEventListener('change', (e) => {
-                        loginForm.type = e.target.value;
-                        render();
-                    });
-                }
-
-                // Activity form listeners
-                const activityNameInput = document.getElementById('activity-name');
-                if (activityNameInput) {
-                    activityNameInput.addEventListener('input', (e) => {
-                        activityForm.name = e.target.value;
-                    });
-                }
-
-                const activityDescInput = document.getElementById('activity-description');
-                if (activityDescInput) {
-                    activityDescInput.addEventListener('input', (e) => {
-                        activityForm.description = e.target.value;
-                    });
-                }
-
-                const activityPointsInput = document.getElementById('activity-points');
-                if (activityPointsInput) {
-                    activityPointsInput.addEventListener('input', (e) => {
-                        activityForm.points = parseInt(e.target.value) || 10;
-                    });
-                }
-
-                const activityTargetSelect = document.getElementById('activity-target');
-                if (activityTargetSelect) {
-                    activityTargetSelect.addEventListener('change', (e) => {
-                        activityForm.targetUserId = e.target.value;
-                    });
-                }
-            } catch (e) {
-                console.error('Erro ao configurar listeners:', e);
-            }
-        }
-
         // Tornar funções globais
         window.handleLogin = handleLogin;
-        window.toggleRegistering = toggleRegistering;
+        window.selectUserType = selectUserType;
         window.selectMascot = selectMascot;
         window.logout = logout;
         window.completeActivity = completeActivity;
-        window.approveActivity = approveActivity;
         window.showAddActivityModal = showAddActivityModal;
         window.hideAddActivityModal = hideAddActivityModal;
         window.addActivity = addActivity;
         window.fillActivitySuggestion = fillActivitySuggestion;
 
-        // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            try {
-                loadFromLocalStorage();
-                render();
-            } catch (e) {
-                console.error('Erro na inicialização:', e);
-                document.getElementById('app').innerHTML = `
-                    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-                            <h1 class="text-2xl font-bold text-red-600 mb-4">Erro ao inicializar</h1>
-                            <p class="text-gray-600 mb-4">Houve um problema ao carregar o app.</p>
-                            <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
-                                Tentar novamente
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
+            loadFromLocalStorage();
+            render();
         });
     </script>
 </body>
