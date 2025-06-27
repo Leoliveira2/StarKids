@@ -1,560 +1,243 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SuperKids - Plataforma Educacional Gamificada</title>
-    <meta name="description" content="Transforme tarefas em aventuras divertidas para crianças de 5 a 12 anos">
-    
-    <!-- PWA Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="SuperKids">
-    <meta name="theme-color" content="#3B82F6">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.3s ease-in;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .slide-up {
-            animation: slideUp 0.3s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .dance {
-            animation: dance 0.8s ease-in-out;
-            display: inline-block;
-        }
-
-        @keyframes dance {
-            0% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(10deg) scale(1.1); }
-            50% { transform: rotate(0deg) scale(1); }
-            75% { transform: rotate(-10deg) scale(1.1); }
-            100% { transform: rotate(0deg) scale(1); }
-        }
-
-        .loading {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error-box {
-            background: #fee2e2;
-            border: 2px solid #fca5a5;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-
-        .success-box {
-            background: #d1fae5;
-            border: 2px solid #6ee7b7;
-            border-radius: 12px;
-            padding: 16px;
-            margin: 16px 0;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+  <title>SuperKids - Plataforma Educacional Gamificada</title>
+  <meta name="description" content="Transforme tarefas em aventuras divertidas para crianças de 5 a 12 anos">
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div id="app">
-        <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-                <div class="text-center">
-                    <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
-                    <p class="text-gray-600 mb-4">Inicializando...</p>
-                    <div class="loading"></div>
-                    <div id="debug-info" class="text-xs text-gray-500 mt-4"></div>
-                </div>
-            </div>
-        </div>
+<body class="safe-area-top safe-area-bottom">
+<div id="app">
+  <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
+        <p class="text-gray-600 mb-4">Carregando aplicação...</p>
+        <div class="loading"></div>
+      </div>
     </div>
+  </div>
+</div>
+<script type="module">
+// --- Firebase Modular SDK ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-    <script>
-        // Debug function
-        function debug(message) {
-            console.log('SuperKids Debug:', message);
-            const debugEl = document.getElementById('debug-info');
-            if (debugEl) {
-                debugEl.innerHTML += message + '<br>';
-            }
-        }
+// Firebase config (YOURS)
+const firebaseConfig = {
+  apiKey: "AIzaSyBS8wfn5ICLIfBv4r8Ok4V5eG5jZog7sQg",
+  authDomain: "superkids-4d0ca.firebaseapp.com",
+  projectId: "superkids-4d0ca",
+  storageBucket: "superkids-4d0ca.appspot.com",
+  messagingSenderId: "512196800065",
+  appId: "1:512196800065:web:378e4c4e43bff424bee0c0",
+  measurementId: "G-NBZCJHCWRE"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-        // Error handler
-        window.addEventListener('error', function(e) {
-            debug('Error: ' + e.message);
-            console.error('SuperKids Error:', e);
-            showErrorScreen('Erro: ' + e.message);
-        });
+// --- App State ---
+let appState = {
+  currentUser: null,
+  users: [],
+  activities: [],
+  showLogin: true,
+  loading: false,
+  showAddActivity: false
+};
 
-        function showErrorScreen(message) {
-            document.getElementById('app').innerHTML = `
-                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-                        <div class="text-center">
-                            <h1 class="text-2xl font-bold text-red-600 mb-4">❌ Erro</h1>
-                            <div class="error-box">
-                                <p class="text-red-800">${message}</p>
-                            </div>
-                            <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded-lg mt-4">
-                                🔄 Tentar Novamente
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+let loginForm = { name: '', type: 'child', mascot: 'star' };
+let activityForm = { name: '', description: '', points: 10, targetUserId: '' };
+const mascots = {
+  star:   { name: 'Stella', emoji: '⭐', role: 'guide' },
+  dragon: { name: 'Drako', emoji: '🐉', role: 'adventure' },
+  heart:  { name: 'Coração', emoji: '💖', role: 'love' },
+  chancho:{ name: 'Chancho', emoji: '🧒🏽', role: 'warrior' },
+  robot:  { name: 'Robo', emoji: '🤖', role: 'tech' },
+  unicorn:{ name: 'Uni', emoji: '🦄', role: 'magic' }
+};
+const defaultActivities = [
+  { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15, icon: '😴', category: 'health' },
+  { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10, icon: '🪥', category: 'health' },
+  { name: 'Escovar os dentes noite', description: 'Escovação noturna completa', points: 10, icon: '🦷', category: 'health' },
+  { name: 'Tomar café da manhã', description: 'Alimentação saudável pela manhã', points: 10, icon: '🥣', category: 'health' },
+  { name: 'Chegar na escola no horário', description: 'Pontualidade escolar', points: 15, icon: '🏫', category: 'education' },
+  { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20, icon: '📚', category: 'education' },
+  { name: 'Ler por 15 minutos', description: 'Momento de leitura diária', points: 15, icon: '📖', category: 'education' },
+  { name: 'Organizar o quarto', description: 'Guardar brinquedos e organizar espaço', points: 10, icon: '🧹', category: 'social' }
+];
 
-        function showSuccessScreen(message) {
-            const app = document.getElementById('app');
-            const successDiv = document.createElement('div');
-            successDiv.innerHTML = `
-                <div class="success-box">
-                    <p class="text-green-800">${message}</p>
-                </div>
-            `;
-            app.appendChild(successDiv);
-        }
+// --- Firebase Logic ---
+async function firebaseSignIn() {
+  await signInAnonymously(auth);
+}
+function firebaseOnAuth(cb) {
+  onAuthStateChanged(auth, cb);
+}
+async function saveUser(user) {
+  await setDoc(doc(db, "users", user.id), user, { merge: true });
+  return user;
+}
+async function getUsers() {
+  const usersSnap = await getDocs(collection(db, "users"));
+  return usersSnap.docs.map(doc => doc.data());
+}
+async function getUserByName(name) {
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("name", "==", name));
+  const snap = await getDocs(q);
+  return snap.empty ? null : snap.docs[0].data();
+}
+async function saveActivity(activity) {
+  if (!activity.id) {
+    const docRef = await addDoc(collection(db, "activities"), activity);
+    activity.id = docRef.id;
+    await setDoc(doc(db, "activities", activity.id), activity, { merge: true });
+  } else {
+    await setDoc(doc(db, "activities", activity.id), activity, { merge: true });
+  }
+  return activity;
+}
+async function getActivities() {
+  const actsSnap = await getDocs(collection(db, "activities"));
+  return actsSnap.docs.map(doc => doc.data());
+}
 
-        debug('Iniciando SuperKids...');
+// --- UI Logic (Shortened for Brevity) ---
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  if (appState.showLogin || !appState.currentUser) {
+    app.innerHTML = `
+      <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
+          <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
+            <p class="text-gray-600">Sua aventura de aprendizado começa aqui!</p>
+          </div>
+          <input type="text" id="login-name" placeholder="Digite seu nome" value="${loginForm.name}" class="w-full p-3 border-2 border-gray-200 rounded-xl mb-4"/>
+          <button id="login-btn" class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">🚀 Entrar</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('login-btn').onclick = handleLogin;
+    document.getElementById('login-name').oninput = (e) => loginForm.name = e.target.value;
+    document.getElementById('login-name').onkeypress = (e) => { if (e.key === 'Enter') handleLogin(); };
+    return;
+  }
+  // (Very basic dashboard, expand as needed)
+  app.innerHTML = `
+    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
+      <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-3">
+            <div class="text-3xl">${mascots[appState.currentUser.mascot].emoji}</div>
+            <div>
+              <h1 class="text-2xl font-bold text-gray-800">Olá, ${appState.currentUser.name}!</h1>
+            </div>
+          </div>
+          <button id="logout-btn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors">↩️ Sair</button>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Atividades</h2>
+        <div>${appState.activities.filter(a=>a.userId===appState.currentUser.id).map(a=>`
+          <div class="p-3 mb-2 bg-gray-100 rounded">${a.icon||'📝'} <b>${a.name}</b> - ${a.points} XP</div>
+        `).join('')||'<div class="text-gray-500">Nenhuma atividade ainda.</div>'}</div>
+        <button id="add-activity-btn" class="mt-4 w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">➕ Nova Atividade</button>
+      </div>
+      <div id="modal" class="hidden"></div>
+    </div>
+  `;
+  document.getElementById('logout-btn').onclick = logout;
+  document.getElementById('add-activity-btn').onclick = showAddActivityModal;
+}
 
-        // Teste simples primeiro (sem Firebase)
-        let appState = {
-            currentUser: null,
-            users: [],
-            activities: [],
-            showLogin: true,
-            loading: false,
-            firebaseLoaded: false
-        };
+function showAddActivityModal() {
+  const modal = document.getElementById('modal');
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modal.innerHTML = `
+    <div class="bg-white rounded-xl p-6 max-w-sm w-full">
+      <h2 class="text-xl font-bold mb-4">➕ Nova Atividade</h2>
+      <input type="text" id="activity-name" placeholder="Nome" class="w-full p-2 mb-2 border rounded" />
+      <input type="text" id="activity-description" placeholder="Descrição" class="w-full p-2 mb-2 border rounded" />
+      <input type="number" id="activity-points" placeholder="XP" value="10" class="w-full p-2 mb-2 border rounded" />
+      <button id="save-activity-btn" class="w-full bg-blue-500 text-white py-2 rounded mb-2">Salvar</button>
+      <button id="close-modal-btn" class="w-full bg-gray-300 text-gray-700 py-2 rounded">Cancelar</button>
+    </div>
+  `;
+  document.getElementById('close-modal-btn').onclick = hideModal;
+  document.getElementById('save-activity-btn').onclick = async () => {
+    const name = document.getElementById('activity-name').value;
+    const description = document.getElementById('activity-description').value;
+    const points = parseInt(document.getElementById('activity-points').value) || 10;
+    if (!name) { alert('Nome obrigatório!'); return; }
+    await saveActivity({
+      userId: appState.currentUser.id,
+      name, description, points,
+      icon: "📝",
+      status: "pending",
+      date: new Date().toISOString()
+    });
+    appState.activities = await getActivities();
+    hideModal();
+    render();
+  };
+}
+function hideModal() {
+  const modal = document.getElementById('modal');
+  modal.className = 'hidden';
+  modal.innerHTML = '';
+}
 
-        let loginForm = {
-            name: '',
-            type: 'child',
-            mascot: 'star'
-        };
+function logout() {
+  appState.currentUser = null;
+  appState.showLogin = true;
+  render();
+}
 
-        const mascots = {
-            star: { name: 'Stella', emoji: '⭐' },
-            dragon: { name: 'Drako', emoji: '🐉' },
-            heart: { name: 'Coração', emoji: '💖' },
-            chancho: { name: 'Chancho', emoji: '🧒🏽' },
-            robot: { name: 'Robo', emoji: '🤖' },
-            unicorn: { name: 'Uni', emoji: '🦄' }
-        };
+async function handleLogin() {
+  if (!loginForm.name.trim()) { alert('Digite seu nome!'); return; }
+  appState.loading = true;
+  render();
+  await firebaseSignIn();
+  let user = await getUserByName(loginForm.name.trim());
+  if (!user) {
+    const uid = auth.currentUser.uid;
+    user = {
+      id: uid,
+      name: loginForm.name.trim(),
+      type: loginForm.type,
+      xp: 0,
+      mascot: loginForm.mascot,
+      achievements: [],
+      createdAt: new Date().toISOString()
+    };
+    await saveUser(user);
+    for (const activity of defaultActivities) {
+      await saveActivity({ ...activity, userId: uid, status: 'pending', date: new Date().toISOString() });
+    }
+  }
+  appState.currentUser = user;
+  appState.activities = await getActivities();
+  appState.showLogin = false;
+  render();
+}
 
-        const motivationalMessages = [
-            'Parabéns! Você está arrasando! ⭐',
-            'Que orgulho! Mais uma conquista! 🎉',
-            'Uau! Você é incrível! 💪',
-            'Fantástico! Continue assim! 🌟'
-        ];
+// --- App Start ---
+firebaseOnAuth(async user => {
+  if (user) {
+    appState.currentUser = null;
+    appState.activities = await getActivities();
+    render();
+  } else {
+    appState.showLogin = true;
+    render();
+  }
+});
 
-        const defaultActivities = [
-            { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15 },
-            { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10 },
-            { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20 }
-        ];
-
-        function calculateLevel(xp) {
-            return Math.floor(xp / 100) + 1;
-        }
-
-        function vibrateDevice(pattern = [200, 100, 200]) {
-            try {
-                if ('vibrate' in navigator) {
-                    navigator.vibrate(pattern);
-                }
-            } catch (e) {
-                debug('Vibração não suportada');
-            }
-        }
-
-        function showNotification(message, type = 'success') {
-            const notification = document.createElement('div');
-            notification.className = 'fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ' + 
-                (type === 'success' ? 'bg-green-500' : 'bg-red-500') + ' slide-up';
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            if (type === 'success') {
-                vibrateDevice([100, 50, 100]);
-            }
-            
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 4000);
-        }
-
-        function selectUserType(type) {
-            loginForm.type = type;
-            render();
-        }
-
-        function selectMascot(mascot) {
-            loginForm.mascot = mascot;
-            render();
-        }
-
-        function logout() {
-            appState.currentUser = null;
-            appState.showLogin = true;
-            loginForm = { name: '', type: 'child', mascot: 'star' };
-            render();
-        }
-
-        // Versão local simples para testar
-        function handleLoginLocal() {
-            if (!loginForm.name.trim()) {
-                showNotification('Por favor, digite seu nome!', 'error');
-                return;
-            }
-
-            debug('Login local iniciado para: ' + loginForm.name);
-
-            const newUser = {
-                id: Date.now().toString(),
-                name: loginForm.name.trim(),
-                type: loginForm.type,
-                xp: 0,
-                mascot: loginForm.mascot,
-                achievements: [],
-                createdAt: new Date().toISOString()
-            };
-
-            appState.currentUser = newUser;
-            appState.users.push(newUser);
-
-            if (newUser.type === 'child') {
-                // Criar atividades padrão
-                const today = new Date().toISOString();
-                defaultActivities.forEach((activity, index) => {
-                    appState.activities.push({
-                        id: (Date.now() + index).toString(),
-                        userId: newUser.id,
-                        name: activity.name,
-                        description: activity.description,
-                        points: activity.points,
-                        status: 'pending',
-                        date: today
-                    });
-                });
-                showNotification('Bem-vindo(a), ' + newUser.name + '! Suas atividades foram criadas! 🎉');
-            } else {
-                showNotification('Bem-vindo(a), ' + newUser.name + '! 👋');
-            }
-
-            appState.showLogin = false;
-            render();
-        }
-
-        function completeActivity(activityId) {
-            const activity = appState.activities.find(a => a.id === activityId);
-            if (!activity) return;
-
-            debug('Completando atividade: ' + activity.name);
-
-            // Atualizar atividade
-            appState.activities = appState.activities.map(a => 
-                a.id === activityId ? { ...a, status: 'completed' } : a
-            );
-
-            // Atualizar XP
-            appState.currentUser.xp += activity.points;
-
-            vibrateDevice([100, 50, 100, 50, 200]);
-
-            const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-            showNotification(randomMessage + ' +' + activity.points + ' XP!');
-
-            render();
-        }
-
-        function LoginScreen() {
-            return `
-                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-                    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
-                        <div class="text-center mb-8">
-                            <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
-                            <p class="text-gray-600">Sua aventura de aprendizado começa aqui!</p>
-                            ${!appState.firebaseLoaded ? '<p class="text-sm text-orange-600">⚠️ Modo local (sem Firebase)</p>' : ''}
-                        </div>
-
-                        <div class="space-y-4">
-                            <input
-                                type="text"
-                                id="login-name"
-                                placeholder="Digite seu nome"
-                                value="${loginForm.name}"
-                                class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none transition-colors"
-                            />
-
-                            <div class="space-y-2">
-                                <p class="text-sm text-gray-600">Você é:</p>
-                                <div class="flex space-x-3">
-                                    <button
-                                        onclick="selectUserType('child')"
-                                        class="flex-1 p-3 rounded-xl border-2 transition-all duration-200 ${
-                                            loginForm.type === 'child' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                        }"
-                                    >
-                                        <div class="text-2xl mb-1">👶</div>
-                                        <div class="text-sm">Criança</div>
-                                    </button>
-                                    <button
-                                        onclick="selectUserType('parent')"
-                                        class="flex-1 p-3 rounded-xl border-2 transition-all duration-200 ${
-                                            loginForm.type === 'parent' ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                        }"
-                                    >
-                                        <div class="text-2xl mb-1">👨‍👩‍👧‍👦</div>
-                                        <div class="text-sm">Responsável</div>
-                                    </button>
-                                </div>
-                            </div>
-
-                            ${loginForm.type === 'child' ? `
-                                <div>
-                                    <p class="text-sm text-gray-600 mb-2">Escolha seu mascote:</p>
-                                    <div class="grid grid-cols-3 gap-2">
-                                        ${Object.entries(mascots).map(([key, mascot]) => `
-                                            <button
-                                                onclick="selectMascot('${key}')"
-                                                class="p-3 rounded-xl border-2 transition-all duration-200 ${
-                                                    loginForm.mascot === key ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                }"
-                                            >
-                                                <div class="text-2xl mb-1 ${loginForm.mascot === key ? 'dance' : ''}">${mascot.emoji}</div>
-                                                <div class="text-xs">
-                                                    ${key === 'chancho' ? '⚔️ ' : ''}${mascot.name}
-                                                </div>
-                                            </button>
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-
-                            <button
-                                onclick="handleLoginLocal()"
-                                class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
-                            >
-                                🚀 Entrar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function ChildDashboard() {
-            const userActivities = appState.activities.filter(a => a.userId === appState.currentUser.id);
-            const todayActivities = userActivities.filter(a => 
-                new Date(a.date).toDateString() === new Date().toDateString()
-            );
-            const completedToday = todayActivities.filter(a => a.status === 'completed').length;
-            const totalToday = todayActivities.length;
-            const currentMascot = mascots[appState.currentUser.mascot];
-            const completedTotal = userActivities.filter(a => a.status === 'completed').length;
-            const currentLevel = calculateLevel(appState.currentUser.xp);
-
-            return `
-                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
-                    <div class="max-w-4xl mx-auto">
-                        <!-- Header -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3">
-                                    <div class="text-4xl ${completedToday > 0 ? 'dance' : ''}">${currentMascot.emoji}</div>
-                                    <div>
-                                        <h1 class="text-2xl font-bold text-gray-800">
-                                            ${appState.currentUser.mascot === 'chancho' ? '⚔️ ' : ''}Olá, ${appState.currentUser.name}!
-                                        </h1>
-                                        <p class="text-gray-600">${currentMascot.name} está torcendo por você!</p>
-                                    </div>
-                                </div>
-                                <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-                                    ↩️ Sair
-                                </button>
-                            </div>
-
-                            <!-- Stats -->
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div class="bg-yellow-100 p-4 rounded-xl text-center">
-                                    <div class="text-2xl mb-2">⚡</div>
-                                    <div class="text-2xl font-bold text-yellow-800">${appState.currentUser.xp}</div>
-                                    <div class="text-sm text-yellow-600">XP Total</div>
-                                </div>
-                                <div class="bg-blue-100 p-4 rounded-xl text-center">
-                                    <div class="text-2xl mb-2">🎯</div>
-                                    <div class="text-2xl font-bold text-blue-800">${currentLevel}</div>
-                                    <div class="text-sm text-blue-600">Nível</div>
-                                </div>
-                                <div class="bg-green-100 p-4 rounded-xl text-center">
-                                    <div class="text-2xl mb-2">✅</div>
-                                    <div class="text-2xl font-bold text-green-800">${completedTotal}</div>
-                                    <div class="text-sm text-green-600">Concluídas</div>
-                                </div>
-                                <div class="bg-purple-100 p-4 rounded-xl text-center">
-                                    <div class="text-2xl mb-2">🏆</div>
-                                    <div class="text-2xl font-bold text-purple-800">0</div>
-                                    <div class="text-sm text-purple-600">Conquistas</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Atividades de Hoje -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 slide-up">
-                            <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Atividades de Hoje</h2>
-                            <div class="mb-4">
-                                <div class="flex justify-between text-sm text-gray-600 mb-1">
-                                    <span>Progresso do dia</span>
-                                    <span>${completedToday}/${totalToday}</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-3">
-                                    <div 
-                                        class="bg-green-500 h-3 rounded-full transition-all duration-500"
-                                        style="width: ${totalToday > 0 ? (completedToday / totalToday) * 100 : 0}%"
-                                    ></div>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                ${todayActivities.length === 0 ? `
-                                    <p class="text-gray-500 text-center py-8">🎯 Nenhuma atividade para hoje!</p>
-                                ` : todayActivities.map(activity => `
-                                    <div class="p-4 rounded-xl border-2 ${
-                                        activity.status === 'completed' ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-                                    } fade-in">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex-1">
-                                                <h3 class="font-semibold text-gray-800">${activity.name}</h3>
-                                                <p class="text-sm text-gray-600">${activity.description}</p>
-                                                <div class="flex items-center space-x-2 mt-1">
-                                                    <span class="text-yellow-500">⚡</span>
-                                                    <span class="text-sm text-yellow-600">${activity.points} XP</span>
-                                                </div>
-                                            </div>
-                                            ${activity.status === 'pending' ? `
-                                                <button
-                                                    onclick="completeActivity('${activity.id}')"
-                                                    class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all duration-200 font-medium hover:scale-105"
-                                                >
-                                                    ✓ Concluir
-                                                </button>
-                                            ` : `
-                                                <div class="text-green-600 font-medium flex items-center space-x-1">
-                                                    <span class="text-lg">✅</span>
-                                                    <span>Concluída</span>
-                                                </div>
-                                            `}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function render() {
-            try {
-                const app = document.getElementById('app');
-                if (!app) {
-                    debug('Elemento #app não encontrado');
-                    return;
-                }
-                
-                debug('Renderizando tela...');
-                
-                if (appState.showLogin || !appState.currentUser) {
-                    app.innerHTML = LoginScreen();
-                } else if (appState.currentUser.type === 'child') {
-                    app.innerHTML = ChildDashboard();
-                } else {
-                    app.innerHTML = `
-                        <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-                            <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-                                <h1 class="text-2xl font-bold text-gray-800 mb-4">👨‍👩‍👧‍👦 Painel dos Pais</h1>
-                                <p class="text-gray-600 mb-4">Em desenvolvimento...</p>
-                                <button onclick="logout()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
-                                    ↩️ Voltar ao Login
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                setupInputListeners();
-                debug('Tela renderizada com sucesso');
-                
-            } catch (error) {
-                debug('Erro no render: ' + error.message);
-                console.error('Render error:', error);
-            }
-        }
-
-        function setupInputListeners() {
-            const loginNameInput = document.getElementById('login-name');
-            if (loginNameInput) {
-                loginNameInput.addEventListener('input', (e) => {
-                    loginForm.name = e.target.value;
-                });
-            }
-        }
-
-        // Tornar funções globais
-        window.handleLoginLocal = handleLoginLocal;
-        window.selectUserType = selectUserType;
-        window.selectMascot = selectMascot;
-        window.logout = logout;
-        window.completeActivity = completeActivity;
-
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            try {
-                debug('DOM carregado, inicializando app...');
-                render();
-                showSuccessScreen('✅ App carregado com sucesso!');
-            } catch (error) {
-                debug('Erro na inicialização: ' + error.message);
-                showErrorScreen('Erro na inicialização: ' + error.message);
-            }
-        });
-
-        debug('Script carregado completamente');
-    </script>
+render();
+</script>
 </body>
 </html>
