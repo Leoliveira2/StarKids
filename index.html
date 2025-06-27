@@ -1,243 +1,133 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-  <title>SuperKids - Plataforma Educacional Gamificada</title>
-  <meta name="description" content="Transforme tarefas em aventuras divertidas para crianças de 5 a 12 anos">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SuperKids Local</title>
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="safe-area-top safe-area-bottom">
-<div id="app">
-  <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full">
-      <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
-        <p class="text-gray-600 mb-4">Carregando aplicação...</p>
-        <div class="loading"></div>
-      </div>
-    </div>
-  </div>
-</div>
-<script type="module">
-// --- Firebase Modular SDK ---
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
-// Firebase config (YOURS)
-const firebaseConfig = {
-  apiKey: "AIzaSyBS8wfn5ICLIfBv4r8Ok4V5eG5jZog7sQg",
-  authDomain: "superkids-4d0ca.firebaseapp.com",
-  projectId: "superkids-4d0ca",
-  storageBucket: "superkids-4d0ca.appspot.com",
-  messagingSenderId: "512196800065",
-  appId: "1:512196800065:web:378e4c4e43bff424bee0c0",
-  measurementId: "G-NBZCJHCWRE"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// --- App State ---
-let appState = {
-  currentUser: null,
-  users: [],
-  activities: [],
-  showLogin: true,
-  loading: false,
-  showAddActivity: false
-};
-
-let loginForm = { name: '', type: 'child', mascot: 'star' };
-let activityForm = { name: '', description: '', points: 10, targetUserId: '' };
-const mascots = {
-  star:   { name: 'Stella', emoji: '⭐', role: 'guide' },
-  dragon: { name: 'Drako', emoji: '🐉', role: 'adventure' },
-  heart:  { name: 'Coração', emoji: '💖', role: 'love' },
-  chancho:{ name: 'Chancho', emoji: '🧒🏽', role: 'warrior' },
-  robot:  { name: 'Robo', emoji: '🤖', role: 'tech' },
-  unicorn:{ name: 'Uni', emoji: '🦄', role: 'magic' }
-};
-const defaultActivities = [
-  { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15, icon: '😴', category: 'health' },
-  { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10, icon: '🪥', category: 'health' },
-  { name: 'Escovar os dentes noite', description: 'Escovação noturna completa', points: 10, icon: '🦷', category: 'health' },
-  { name: 'Tomar café da manhã', description: 'Alimentação saudável pela manhã', points: 10, icon: '🥣', category: 'health' },
-  { name: 'Chegar na escola no horário', description: 'Pontualidade escolar', points: 15, icon: '🏫', category: 'education' },
-  { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20, icon: '📚', category: 'education' },
-  { name: 'Ler por 15 minutos', description: 'Momento de leitura diária', points: 15, icon: '📖', category: 'education' },
-  { name: 'Organizar o quarto', description: 'Guardar brinquedos e organizar espaço', points: 10, icon: '🧹', category: 'social' }
-];
-
-// --- Firebase Logic ---
-async function firebaseSignIn() {
-  await signInAnonymously(auth);
-}
-function firebaseOnAuth(cb) {
-  onAuthStateChanged(auth, cb);
-}
-async function saveUser(user) {
-  await setDoc(doc(db, "users", user.id), user, { merge: true });
-  return user;
-}
-async function getUsers() {
-  const usersSnap = await getDocs(collection(db, "users"));
-  return usersSnap.docs.map(doc => doc.data());
-}
-async function getUserByName(name) {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("name", "==", name));
-  const snap = await getDocs(q);
-  return snap.empty ? null : snap.docs[0].data();
-}
-async function saveActivity(activity) {
-  if (!activity.id) {
-    const docRef = await addDoc(collection(db, "activities"), activity);
-    activity.id = docRef.id;
-    await setDoc(doc(db, "activities", activity.id), activity, { merge: true });
-  } else {
-    await setDoc(doc(db, "activities", activity.id), activity, { merge: true });
-  }
-  return activity;
-}
-async function getActivities() {
-  const actsSnap = await getDocs(collection(db, "activities"));
-  return actsSnap.docs.map(doc => doc.data());
-}
-
-// --- UI Logic (Shortened for Brevity) ---
-function render() {
-  const app = document.getElementById('app');
-  if (!app) return;
-  if (appState.showLogin || !appState.currentUser) {
-    app.innerHTML = `
-      <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
-          <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
-            <p class="text-gray-600">Sua aventura de aprendizado começa aqui!</p>
-          </div>
-          <input type="text" id="login-name" placeholder="Digite seu nome" value="${loginForm.name}" class="w-full p-3 border-2 border-gray-200 rounded-xl mb-4"/>
-          <button id="login-btn" class="w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">🚀 Entrar</button>
-        </div>
-      </div>
-    `;
-    document.getElementById('login-btn').onclick = handleLogin;
-    document.getElementById('login-name').oninput = (e) => loginForm.name = e.target.value;
-    document.getElementById('login-name').onkeypress = (e) => { if (e.key === 'Enter') handleLogin(); };
-    return;
-  }
-  // (Very basic dashboard, expand as needed)
-  app.innerHTML = `
-    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
-      <div class="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center space-x-3">
-            <div class="text-3xl">${mascots[appState.currentUser.mascot].emoji}</div>
-            <div>
-              <h1 class="text-2xl font-bold text-gray-800">Olá, ${appState.currentUser.name}!</h1>
-            </div>
-          </div>
-          <button id="logout-btn" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors">↩️ Sair</button>
-        </div>
-        <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Atividades</h2>
-        <div>${appState.activities.filter(a=>a.userId===appState.currentUser.id).map(a=>`
-          <div class="p-3 mb-2 bg-gray-100 rounded">${a.icon||'📝'} <b>${a.name}</b> - ${a.points} XP</div>
-        `).join('')||'<div class="text-gray-500">Nenhuma atividade ainda.</div>'}</div>
-        <button id="add-activity-btn" class="mt-4 w-full bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors">➕ Nova Atividade</button>
-      </div>
-      <div id="modal" class="hidden"></div>
-    </div>
-  `;
-  document.getElementById('logout-btn').onclick = logout;
-  document.getElementById('add-activity-btn').onclick = showAddActivityModal;
-}
-
-function showAddActivityModal() {
-  const modal = document.getElementById('modal');
-  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-  modal.innerHTML = `
-    <div class="bg-white rounded-xl p-6 max-w-sm w-full">
-      <h2 class="text-xl font-bold mb-4">➕ Nova Atividade</h2>
-      <input type="text" id="activity-name" placeholder="Nome" class="w-full p-2 mb-2 border rounded" />
-      <input type="text" id="activity-description" placeholder="Descrição" class="w-full p-2 mb-2 border rounded" />
-      <input type="number" id="activity-points" placeholder="XP" value="10" class="w-full p-2 mb-2 border rounded" />
-      <button id="save-activity-btn" class="w-full bg-blue-500 text-white py-2 rounded mb-2">Salvar</button>
-      <button id="close-modal-btn" class="w-full bg-gray-300 text-gray-700 py-2 rounded">Cancelar</button>
-    </div>
-  `;
-  document.getElementById('close-modal-btn').onclick = hideModal;
-  document.getElementById('save-activity-btn').onclick = async () => {
-    const name = document.getElementById('activity-name').value;
-    const description = document.getElementById('activity-description').value;
-    const points = parseInt(document.getElementById('activity-points').value) || 10;
-    if (!name) { alert('Nome obrigatório!'); return; }
-    await saveActivity({
-      userId: appState.currentUser.id,
-      name, description, points,
-      icon: "📝",
-      status: "pending",
-      date: new Date().toISOString()
-    });
-    appState.activities = await getActivities();
-    hideModal();
-    render();
-  };
-}
-function hideModal() {
-  const modal = document.getElementById('modal');
-  modal.className = 'hidden';
-  modal.innerHTML = '';
-}
-
-function logout() {
-  appState.currentUser = null;
-  appState.showLogin = true;
-  render();
-}
-
-async function handleLogin() {
-  if (!loginForm.name.trim()) { alert('Digite seu nome!'); return; }
-  appState.loading = true;
-  render();
-  await firebaseSignIn();
-  let user = await getUserByName(loginForm.name.trim());
-  if (!user) {
-    const uid = auth.currentUser.uid;
-    user = {
-      id: uid,
-      name: loginForm.name.trim(),
-      type: loginForm.type,
-      xp: 0,
-      mascot: loginForm.mascot,
-      achievements: [],
-      createdAt: new Date().toISOString()
-    };
-    await saveUser(user);
-    for (const activity of defaultActivities) {
-      await saveActivity({ ...activity, userId: uid, status: 'pending', date: new Date().toISOString() });
+  <style>
+    body {
+      background: linear-gradient(to bottom right, #fce7f3, #fbcfe8);
+      min-height: 100vh;
     }
-  }
-  appState.currentUser = user;
-  appState.activities = await getActivities();
-  appState.showLogin = false;
-  render();
-}
+  </style>
+</head>
+<body>
+  <div id="app" class="p-4 max-w-md mx-auto"></div>
+  <script>
+    const mascots = {
+      star: { name: 'Stella', emoji: '⭐' },
+      dragon: { name: 'Drako', emoji: '🐉' },
+      heart: { name: 'Coração', emoji: '💖' },
+      chancho: { name: 'Chancho', emoji: '🧒🏽' },
+      robot: { name: 'Robo', emoji: '🤖' },
+      unicorn: { name: 'Uni', emoji: '🦄' }
+    };
 
-// --- App Start ---
-firebaseOnAuth(async user => {
-  if (user) {
-    appState.currentUser = null;
-    appState.activities = await getActivities();
-    render();
-  } else {
-    appState.showLogin = true;
-    render();
-  }
-});
+    const defaultActivities = [
+      { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15 },
+      { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10 },
+      { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20 }
+    ];
 
-render();
-</script>
+    let currentUser = null;
+
+    function saveUser(user) {
+      localStorage.setItem('superkids_user', JSON.stringify(user));
+    }
+
+    function loadUser() {
+      const data = localStorage.getItem('superkids_user');
+      return data ? JSON.parse(data) : null;
+    }
+
+    function saveActivities(activities) {
+      localStorage.setItem('superkids_activities', JSON.stringify(activities));
+    }
+
+    function loadActivities() {
+      const data = localStorage.getItem('superkids_activities');
+      return data ? JSON.parse(data) : [];
+    }
+
+    function completeActivity(index) {
+      const activities = loadActivities();
+      activities[index].status = 'completed';
+      saveActivities(activities);
+
+      currentUser.xp += activities[index].points;
+      saveUser(currentUser);
+      alert(`Atividade concluída! +${activities[index].points} XP`);
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const activities = loadActivities();
+      document.getElementById("app").innerHTML = `
+        <div class="p-4 max-w-xl mx-auto">
+          <h1 class="text-2xl font-bold mb-2">Bem-vindo, ${currentUser.name}!</h1>
+          <p class="text-lg">Mascote: ${mascots[currentUser.mascot].emoji} ${mascots[currentUser.mascot].name}</p>
+          <p class="text-sm">XP: ${currentUser.xp}</p>
+          <button class="mt-4 bg-red-500 text-white px-4 py-2 rounded" onclick="logout()">Sair</button>
+          <div id="activities" class="mt-6"></div>
+        </div>
+      `;
+
+      let html = "<h2 class='text-xl font-semibold mb-2'>Atividades</h2>";
+      activities.forEach((act, idx) => {
+        html += `<div class='border p-3 mb-2 rounded ${act.status === 'completed' ? 'bg-green-100' : 'bg-white'}'>
+          <div class='font-medium'>${act.name}</div>
+          <div class='text-sm text-gray-600'>${act.description}</div>
+          <div class='text-sm'>XP: ${act.points}</div>
+          ${act.status === 'pending' ? `<button class='mt-2 bg-blue-500 text-white px-3 py-1 rounded' onclick='completeActivity(${idx})'>Concluir</button>` : '<div class="text-green-600 font-semibold">Concluída</div>'}
+        </div>`;
+      });
+      document.getElementById("activities").innerHTML = html;
+    }
+
+    function logout() {
+      localStorage.removeItem('superkids_user');
+      renderLogin();
+    }
+
+    function renderLogin() {
+      document.getElementById("app").innerHTML = `
+        <div class="p-4 max-w-md mx-auto">
+          <h1 class="text-2xl font-bold mb-4">Login</h1>
+          <input type="text" id="name" placeholder="Nome" class="border p-2 rounded w-full mb-2" />
+          <select id="mascot" class="border p-2 rounded w-full mb-4">
+            ${Object.entries(mascots).map(([key, val]) => `<option value="${key}">${val.emoji} ${val.name}</option>`).join("")}
+          </select>
+          <button class="bg-green-500 text-white px-4 py-2 rounded w-full" id="loginBtn">Entrar</button>
+        </div>
+      `;
+
+      document.getElementById("loginBtn").addEventListener("click", () => {
+        const name = document.getElementById("name").value.trim();
+        const mascot = document.getElementById("mascot").value;
+        if (!name) return alert("Digite seu nome");
+
+        const existing = loadUser();
+        if (existing && existing.name === name) {
+          currentUser = existing;
+        } else {
+          currentUser = { name, mascot, xp: 0 };
+          saveUser(currentUser);
+          saveActivities(defaultActivities.map(act => ({ ...act, status: 'pending' })));
+        }
+        renderDashboard();
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedUser = loadUser();
+      if (savedUser) {
+        currentUser = savedUser;
+        renderDashboard();
+      } else {
+        renderLogin();
+      }
+    });
+  </script>
 </body>
 </html>
