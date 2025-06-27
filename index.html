@@ -51,15 +51,13 @@
         // Estado Global da Aplicação
         let appState = {
             currentUser: null,
-            users: JSON.parse(localStorage.getItem('superkids-users') || '[]'),
-            activities: JSON.parse(localStorage.getItem('superkids-activities') || '[]'),
-            rewards: JSON.parse(localStorage.getItem('superkids-rewards') || '[]'),
+            users: [],
+            activities: [],
             showLogin: true,
-            showAddActivity: false,
-            selectedTheme: localStorage.getItem('superkids-theme') || 'blue'
+            showAddActivity: false
         };
 
-        // Estado dos formulários (separado para evitar re-renders)
+        // Estado dos formulários
         let loginForm = {
             name: '',
             type: 'child',
@@ -76,60 +74,39 @@
 
         // Configurações
         const mascots = {
-            star: { name: 'Stella', emoji: '⭐', color: 'text-yellow-400' },
-            dragon: { name: 'Drako', emoji: '🐉', color: 'text-green-400' },
-            heart: { name: 'Coração', emoji: '💖', color: 'text-pink-400' }
-        };
-
-        const themes = {
-            blue: 'from-blue-400 to-purple-600',
-            green: 'from-green-400 to-blue-500',
-            pink: 'from-pink-400 to-red-500',
-            purple: 'from-purple-400 to-indigo-600'
+            star: { name: 'Stella', emoji: '⭐' },
+            dragon: { name: 'Drako', emoji: '🐉' },
+            heart: { name: 'Coração', emoji: '💖' }
         };
 
         const motivationalMessages = [
-            "Você está indo muito bem! Continue assim! ⭐",
-            "Que orgulho de você! Mais uma atividade concluída! 🎉",
-            "Uau! Você está se tornando um super herói das tarefas! 💪",
-            "Incrível! Seus pais devem estar muito orgulhosos! 🌟",
-            "Você é demais! Continue brilhando! ✨"
+            'Você está indo muito bem! Continue assim! ⭐',
+            'Que orgulho de você! Mais uma atividade concluída! 🎉',
+            'Uau! Você está se tornando um super herói das tarefas! 💪',
+            'Incrível! Seus pais devem estar muito orgulhosos! 🌟',
+            'Você é demais! Continue brilhando! ✨'
+        ];
+
+        const achievements = [
+            { id: 1, name: 'Primeiro Passo', description: 'Complete sua primeira atividade', icon: '🎯' },
+            { id: 2, name: 'Em Chamas', description: 'Mantenha 3 dias consecutivos', icon: '🔥' },
+            { id: 3, name: 'Super Estrela', description: 'Alcance o nível 5', icon: '⭐' },
+            { id: 4, name: 'Imparável', description: 'Complete 10 atividades', icon: '🚀' },
+            { id: 5, name: 'Lenda', description: 'Mantenha 7 dias consecutivos', icon: '👑' }
         ];
 
         // Atividades padrão para crianças
         const defaultActivities = [
-            { name: 'Dormir no horário (21h-22h)', description: 'Ir para a cama no horário combinado', points: 15 },
-            { name: 'Escovar os dentes (manhã)', description: 'Escovação matinal completa', points: 10 },
-            { name: 'Escovar os dentes (noite)', description: 'Escovação noturna completa', points: 10 },
-            { name: 'Tomar café da manhã completo', description: 'Alimentação saudável pela manhã', points: 10 },
+            { name: 'Dormir no horário', description: 'Ir para a cama no horário combinado', points: 15 },
+            { name: 'Escovar os dentes manhã', description: 'Escovação matinal completa', points: 10 },
+            { name: 'Escovar os dentes noite', description: 'Escovação noturna completa', points: 10 },
+            { name: 'Tomar café da manhã', description: 'Alimentação saudável pela manhã', points: 10 },
             { name: 'Chegar na escola no horário', description: 'Pontualidade escolar', points: 15 },
             { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20 },
             { name: 'Ler por 15 minutos', description: 'Momento de leitura diária', points: 15 },
             { name: 'Organizar o quarto', description: 'Guardar brinquedos e organizar espaço', points: 10 },
             { name: 'Tomar banho', description: 'Higiene pessoal completa', points: 10 },
-            { name: 'Comer frutas ou verduras', description: 'Alimentação saudável', points: 10 },
-            { name: 'Ajudar nas tarefas de casa', description: 'Colaborar com a família', points: 15 }
-        ];
-
-        // Função para criar atividades padrão para uma criança
-        function createDefaultActivitiesForChild(childId) {
-            const today = new Date().toISOString();
-            return defaultActivities.map((activity, index) => ({
-                id: Date.now() + index,
-                userId: childId,
-                name: activity.name,
-                description: activity.description,
-                points: activity.points,
-                status: 'pending',
-                date: today,
-                isDefault: true
-            }));
-        }
-            { id: 1, name: 'Primeiro Passo', description: 'Complete sua primeira atividade', requirement: 1, icon: '🎯' },
-            { id: 2, name: 'Em Chamas', description: 'Mantenha 3 dias consecutivos', requirement: 3, icon: '🔥' },
-            { id: 3, name: 'Super Estrela', description: 'Alcance o nível 5', requirement: 5, icon: '⭐' },
-            { id: 4, name: 'Imparável', description: 'Complete 10 atividades', requirement: 10, icon: '🚀' },
-            { id: 5, name: 'Lenda', description: 'Mantenha 7 dias consecutivos', requirement: 7, icon: '👑' }
+            { name: 'Comer frutas ou verduras', description: 'Alimentação saudável', points: 10 }
         ];
 
         // Funções Utilitárias
@@ -140,49 +117,59 @@
         function calculateStreak(userId) {
             const userActivities = appState.activities.filter(a => a.userId === userId && a.status === 'completed');
             if (userActivities.length === 0) return 0;
-
-            const sortedActivities = userActivities.sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            let streak = 0;
-            let currentDate = new Date();
-            
-            for (let activity of sortedActivities) {
-                const activityDate = new Date(activity.date).toDateString();
-                const currentDateStr = currentDate.toDateString();
-                
-                if (activityDate === currentDateStr) {
-                    streak++;
-                    currentDate.setDate(currentDate.getDate() - 1);
-                } else {
-                    break;
-                }
-            }
-            
-            return streak;
+            return userActivities.length; // Simplificado por enquanto
         }
 
         function saveToLocalStorage() {
-            localStorage.setItem('superkids-users', JSON.stringify(appState.users));
-            localStorage.setItem('superkids-activities', JSON.stringify(appState.activities));
-            localStorage.setItem('superkids-rewards', JSON.stringify(appState.rewards));
-            localStorage.setItem('superkids-theme', appState.selectedTheme);
+            try {
+                localStorage.setItem('superkids-users', JSON.stringify(appState.users));
+                localStorage.setItem('superkids-activities', JSON.stringify(appState.activities));
+            } catch (e) {
+                console.error('Erro ao salvar:', e);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedUsers = localStorage.getItem('superkids-users');
+                const savedActivities = localStorage.getItem('superkids-activities');
+
+                if (savedUsers) appState.users = JSON.parse(savedUsers);
+                if (savedActivities) appState.activities = JSON.parse(savedActivities);
+            } catch (e) {
+                console.error('Erro ao carregar:', e);
+            }
         }
 
         function showNotification(message, type = 'success') {
             const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ${
-                type === 'success' ? 'bg-green-500' : 'bg-red-500'
-            } slide-up`;
+            notification.className = 'fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg text-white ' + 
+                (type === 'success' ? 'bg-green-500' : 'bg-red-500') + ' slide-up';
             notification.textContent = message;
             
             document.body.appendChild(notification);
             
             setTimeout(() => {
-                notification.remove();
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
             }, 3000);
         }
 
-        // Funções do Login
+        function createDefaultActivitiesForChild(childId) {
+            const today = new Date().toISOString();
+            return defaultActivities.map((activity, index) => ({
+                id: Date.now() + index,
+                userId: childId,
+                name: activity.name,
+                description: activity.description,
+                points: activity.points,
+                status: 'pending',
+                date: today
+            }));
+        }
+
+        // Funções principais
         function handleLogin() {
             if (!loginForm.name.trim()) {
                 showNotification('Por favor, digite seu nome!', 'error');
@@ -195,7 +182,6 @@
                     name: loginForm.name.trim(),
                     type: loginForm.type,
                     xp: 0,
-                    level: 1,
                     mascot: loginForm.mascot,
                     achievements: [],
                     createdAt: new Date().toISOString()
@@ -207,15 +193,15 @@
                 if (newUser.type === 'child') {
                     const defaultActivitiesForChild = createDefaultActivitiesForChild(newUser.id);
                     appState.activities.push(...defaultActivitiesForChild);
-                    showNotification(`Bem-vindo(a), ${newUser.name}! Suas atividades diárias foram criadas! 🎉`);
+                    showNotification('Bem-vindo(a), ' + newUser.name + '! Suas atividades diárias foram criadas!');
                 } else {
-                    showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
+                    showNotification('Bem-vindo(a), ' + newUser.name + '!');
                 }
             } else {
                 const user = appState.users.find(u => u.name.toLowerCase() === loginForm.name.toLowerCase());
                 if (user) {
                     appState.currentUser = user;
-                    showNotification(`Olá novamente, ${user.name}! 😊`);
+                    showNotification('Olá novamente, ' + user.name + '!');
                 } else {
                     showNotification('Usuário não encontrado. Registre-se primeiro!', 'error');
                     return;
@@ -244,7 +230,6 @@
             render();
         }
 
-        // Funções das Atividades
         function completeActivity(activityId) {
             appState.activities = appState.activities.map(a => 
                 a.id === activityId ? { ...a, status: 'pending_approval' } : a
@@ -275,10 +260,8 @@
                     appState.currentUser.xp += activity.points;
                 }
 
-                // Verificar conquistas
                 const user = appState.users.find(u => u.id === activity.userId);
-                checkAchievements(user);
-                showNotification(`Atividade aprovada! ${user.name} ganhou ${activity.points} XP! 🌟`);
+                showNotification('Atividade aprovada! ' + user.name + ' ganhou ' + activity.points + ' XP!');
             } else {
                 showNotification('Atividade rejeitada.');
             }
@@ -287,65 +270,9 @@
             render();
         }
 
-        function checkAchievements(user) {
-            const userActivities = appState.activities.filter(a => a.userId === user.id && a.status === 'completed');
-            const streak = calculateStreak(user.id);
-            const level = calculateLevel(user.xp);
-            
-            const newAchievements = [];
-            
-            achievements.forEach(achievement => {
-                if (user.achievements?.includes(achievement.id)) return;
-                
-                let unlocked = false;
-                switch (achievement.id) {
-                    case 1: unlocked = userActivities.length >= 1; break;
-                    case 2: unlocked = streak >= 3; break;
-                    case 3: unlocked = level >= 5; break;
-                    case 4: unlocked = userActivities.length >= 10; break;
-                    case 5: unlocked = streak >= 7; break;
-                }
-                
-                if (unlocked) {
-                    newAchievements.push(achievement.id);
-                }
-            });
-            
-            if (newAchievements.length > 0) {
-                appState.users = appState.users.map(u => 
-                    u.id === user.id ? { 
-                        ...u, 
-                        achievements: [...(u.achievements || []), ...newAchievements] 
-                    } : u
-                );
-                
-                // Atualizar usuário atual se for ele
-                if (appState.currentUser && appState.currentUser.id === user.id) {
-                    appState.currentUser.achievements = [...(appState.currentUser.achievements || []), ...newAchievements];
-                }
-                
-                const achievementNames = newAchievements.map(id => 
-                    achievements.find(a => a.id === id).name
-                ).join(', ');
-                showNotification(`🏆 ${user.name} desbloqueou: ${achievementNames}!`);
-            }
-        }
-
         function showAddActivityModal() {
             appState.showAddActivity = true;
-            const childUsers = appState.users.filter(u => u.type === 'child');
-            
-            // Se há apenas uma criança, pré-seleciona ela
-            if (childUsers.length === 1) {
-                activityForm = { 
-                    name: '', 
-                    description: '', 
-                    points: 10, 
-                    targetUserId: childUsers[0].id.toString() 
-                };
-            } else {
-                activityForm = { name: '', description: '', points: 10, targetUserId: '' };
-            }
+            activityForm = { name: '', description: '', points: 10, targetUserId: '' };
             render();
         }
 
@@ -355,49 +282,39 @@
         }
 
         function addActivity() {
-            const childUsers = appState.users.filter(u => u.type === 'child');
-            let targetUserId = activityForm.targetUserId;
-            
-            // Se há apenas uma criança e targetUserId não está definido, usar essa criança
-            if (childUsers.length === 1 && !targetUserId) {
-                targetUserId = childUsers[0].id.toString();
-            }
-            
-            if (!activityForm.name.trim() || !targetUserId) {
+            if (!activityForm.name.trim() || !activityForm.targetUserId) {
                 showNotification('Preencha todos os campos obrigatórios!', 'error');
                 return;
             }
 
             const activity = {
                 id: Date.now(),
-                userId: parseInt(targetUserId),
+                userId: parseInt(activityForm.targetUserId),
                 name: activityForm.name.trim(),
                 description: activityForm.description.trim(),
                 points: activityForm.points,
                 status: 'pending',
-                date: new Date().toISOString(),
-                isDefault: false
+                date: new Date().toISOString()
             };
 
             appState.activities.push(activity);
             appState.showAddActivity = false;
-            showNotification('Atividade adicionada com sucesso! 🎯');
+            showNotification('Atividade adicionada com sucesso!');
             saveToLocalStorage();
             render();
         }
 
-        // Função global para preencher sugestão de atividade
-        window.fillActivitySuggestion = function(name, description, points) {
+        function fillActivitySuggestion(name, description, points) {
             activityForm.name = name;
             activityForm.description = description;
             activityForm.points = points;
             render();
-        };
+        }
 
         // Componentes
         function LoginScreen() {
             return `
-                <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} flex items-center justify-center p-4">
+                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
                     <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full fade-in">
                         <div class="text-center mb-8">
                             <h1 class="text-4xl font-bold text-gray-800 mb-2">SuperKids</h1>
@@ -469,11 +386,10 @@
             );
             const completedToday = todayActivities.filter(a => a.status === 'completed').length;
             const totalToday = todayActivities.length;
-            const streak = calculateStreak(appState.currentUser.id);
             const currentMascot = mascots[appState.currentUser.mascot];
 
             return `
-                <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} p-4">
+                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
                     <div class="max-w-4xl mx-auto">
                         <!-- Header -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
@@ -486,30 +402,30 @@
                                     </div>
                                 </div>
                                 <button onclick="logout()" class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100">
-                                    <i data-lucide="log-out"></i>
+                                    ↩️
                                 </button>
                             </div>
 
                             <!-- Stats -->
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div class="bg-yellow-100 p-4 rounded-xl text-center">
-                                    <i data-lucide="zap" class="w-8 h-8 text-yellow-600 mx-auto mb-2"></i>
+                                    <div class="text-2xl mb-2">⚡</div>
                                     <div class="text-2xl font-bold text-yellow-800">${appState.currentUser.xp}</div>
                                     <div class="text-sm text-yellow-600">XP Total</div>
                                 </div>
                                 <div class="bg-blue-100 p-4 rounded-xl text-center">
-                                    <i data-lucide="target" class="w-8 h-8 text-blue-600 mx-auto mb-2"></i>
+                                    <div class="text-2xl mb-2">🎯</div>
                                     <div class="text-2xl font-bold text-blue-800">${calculateLevel(appState.currentUser.xp)}</div>
                                     <div class="text-sm text-blue-600">Nível</div>
                                 </div>
                                 <div class="bg-green-100 p-4 rounded-xl text-center">
-                                    <i data-lucide="calendar" class="w-8 h-8 text-green-600 mx-auto mb-2"></i>
-                                    <div class="text-2xl font-bold text-green-800">${streak}</div>
-                                    <div class="text-sm text-green-600">Dias Seguidos</div>
+                                    <div class="text-2xl mb-2">📅</div>
+                                    <div class="text-2xl font-bold text-green-800">${calculateStreak(appState.currentUser.id)}</div>
+                                    <div class="text-sm text-green-600">Atividades</div>
                                 </div>
                                 <div class="bg-purple-100 p-4 rounded-xl text-center">
-                                    <i data-lucide="award" class="w-8 h-8 text-purple-600 mx-auto mb-2"></i>
-                                    <div class="text-2xl font-bold text-purple-800">${appState.currentUser.achievements?.length || 0}</div>
+                                    <div class="text-2xl mb-2">🏆</div>
+                                    <div class="text-2xl font-bold text-purple-800">${(appState.currentUser.achievements || []).length}</div>
                                     <div class="text-sm text-purple-600">Conquistas</div>
                                 </div>
                             </div>
@@ -545,7 +461,7 @@
                                                 <h3 class="font-semibold text-gray-800">${activity.name}</h3>
                                                 <p class="text-sm text-gray-600">${activity.description}</p>
                                                 <div class="flex items-center space-x-2 mt-1">
-                                                    <i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i>
+                                                    <span class="text-yellow-500">⚡</span>
                                                     <span class="text-sm text-yellow-600">${activity.points} XP</span>
                                                 </div>
                                             </div>
@@ -554,7 +470,7 @@
                                                     onclick="completeActivity(${activity.id})"
                                                     class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition-colors"
                                                 >
-                                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                                    ✓
                                                 </button>
                                             ` : activity.status === 'pending_approval' ? `
                                                 <div class="text-yellow-600 font-medium">Aguardando aprovação</div>
@@ -566,46 +482,17 @@
                                 `).join('')}
                             </div>
                         </div>
-
-                        <!-- Conquistas -->
-                        <div class="bg-white rounded-2xl shadow-lg p-6">
-                            <h2 class="text-xl font-bold text-gray-800 mb-4">Suas Conquistas</h2>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                ${achievements.map(achievement => {
-                                    const isUnlocked = appState.currentUser.achievements?.includes(achievement.id);
-                                    return `
-                                        <div class="p-4 rounded-xl ${
-                                            isUnlocked ? 'bg-yellow-50 border-2 border-yellow-200' : 'bg-gray-100 border-2 border-gray-200'
-                                        } fade-in">
-                                            <div class="flex items-center space-x-3">
-                                                <div class="text-2xl ${isUnlocked ? '' : 'grayscale opacity-50'}">
-                                                    ${achievement.icon}
-                                                </div>
-                                                <div>
-                                                    <h3 class="font-semibold ${isUnlocked ? 'text-yellow-800' : 'text-gray-500'}">
-                                                        ${achievement.name}
-                                                    </h3>
-                                                    <p class="text-sm ${isUnlocked ? 'text-yellow-600' : 'text-gray-400'}">
-                                                        ${achievement.description}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
                     </div>
                 </div>
             `;
         }
 
         function ParentDashboard() {
-            const childUsers = appState.users.filter(u => u.type === 'child');
+            const allChildUsers = appState.users.filter(u => u.type === 'child');
             const pendingActivities = appState.activities.filter(a => a.status === 'pending_approval');
 
             return `
-                <div class="min-h-screen bg-gradient-to-br ${themes[appState.selectedTheme]} p-4">
+                <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 p-4">
                     <div class="max-w-6xl mx-auto">
                         <!-- Header -->
                         <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 fade-in">
@@ -619,14 +506,14 @@
                                         onclick="showAddActivityModal()"
                                         class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2 transition-colors"
                                     >
-                                        <i data-lucide="plus" class="w-5 h-5"></i>
+                                        <span>➕</span>
                                         <span>Nova Atividade</span>
                                     </button>
                                     <button
                                         onclick="logout()"
                                         class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
                                     >
-                                        <i data-lucide="log-out" class="w-6 h-6"></i>
+                                        ↩️
                                     </button>
                                 </div>
                             </div>
@@ -634,9 +521,8 @@
 
                         <!-- Crianças Overview -->
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                            ${childUsers.map(child => {
+                            ${allChildUsers.map(child => {
                                 const childActivities = appState.activities.filter(a => a.userId === child.id && a.status === 'completed');
-                                const streak = calculateStreak(child.id);
                                 const mascot = mascots[child.mascot];
                                 
                                 return `
@@ -654,16 +540,8 @@
                                                 <span class="font-semibold">${child.xp}</span>
                                             </div>
                                             <div class="flex justify-between">
-                                                <span class="text-sm text-gray-600">Sequência:</span>
-                                                <span class="font-semibold">${streak} dias</span>
-                                            </div>
-                                            <div class="flex justify-between">
                                                 <span class="text-sm text-gray-600">Atividades:</span>
                                                 <span class="font-semibold">${childActivities.length}</span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-sm text-gray-600">Conquistas:</span>
-                                                <span class="font-semibold">${child.achievements?.length || 0}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -684,11 +562,11 @@
                                                     <div class="flex-1">
                                                         <div class="flex items-center space-x-2 mb-1">
                                                             <h3 class="font-semibold text-gray-800">${activity.name}</h3>
-                                                            <span class="text-sm text-gray-500">- ${child?.name || 'Criança'}</span>
+                                                            <span class="text-sm text-gray-500">- ${child ? child.name : 'Criança'}</span>
                                                         </div>
                                                         <p class="text-sm text-gray-600">${activity.description}</p>
                                                         <div class="flex items-center space-x-2 mt-1">
-                                                            <i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i>
+                                                            <span class="text-yellow-500">⚡</span>
                                                             <span class="text-sm text-yellow-600">${activity.points} XP</span>
                                                         </div>
                                                     </div>
@@ -698,14 +576,14 @@
                                                             class="bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 transition-colors"
                                                             title="Aprovar"
                                                         >
-                                                            <i data-lucide="check" class="w-5 h-5"></i>
+                                                            ✓
                                                         </button>
                                                         <button
                                                             onclick="approveActivity(${activity.id}, false)"
                                                             class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition-colors"
                                                             title="Rejeitar"
                                                         >
-                                                            <i data-lucide="x" class="w-5 h-5"></i>
+                                                            ✗
                                                         </button>
                                                     </div>
                                                 </div>
@@ -723,43 +601,27 @@
                             <div class="bg-white rounded-2xl p-6 max-w-md w-full slide-up">
                                 <h2 class="text-xl font-bold text-gray-800 mb-4">Nova Atividade</h2>
                                 <div class="space-y-4">
-                                    ${childUsers.length > 1 ? `
-                                        <select
-                                            id="activity-target"
-                                            value="${activityForm.targetUserId}"
-                                            class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                                        >
-                                            <option value="">Selecione a criança</option>
-                                            ${childUsers.map(child => `
-                                                <option value="${child.id}">${child.name}</option>
-                                            `).join('')}
-                                        </select>
-                                    ` : childUsers.length === 1 ? `
-                                        <div class="p-3 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                                            <div class="flex items-center space-x-2">
-                                                <div class="text-2xl">${mascots[childUsers[0].mascot].emoji}</div>
-                                                <div>
-                                                    <div class="font-semibold text-blue-800">Para: ${childUsers[0].name}</div>
-                                                    <div class="text-sm text-blue-600">Criança selecionada automaticamente</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ` : `
-                                        <div class="p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
-                                            <div class="text-red-800 font-semibold">Nenhuma criança cadastrada</div>
-                                            <div class="text-sm text-red-600">Cadastre uma criança primeiro</div>
-                                        </div>
-                                    `}
+                                    <select
+                                        id="activity-target"
+                                        value="${activityForm.targetUserId}"
+                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                    >
+                                        <option value="">Selecione a criança</option>
+                                        ${allChildUsers.map(child => `
+                                            <option value="${child.id}">${child.name}</option>
+                                        `).join('')}
+                                    </select>
+                                    
                                     <input
                                         type="text"
                                         id="activity-name"
-                                        placeholder="Nome da atividade (ex: Escovar os dentes)"
+                                        placeholder="Nome da atividade"
                                         value="${activityForm.name}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                     />
                                     <textarea
                                         id="activity-description"
-                                        placeholder="Descrição (ex: Escovar bem os dentes após o café da manhã)"
+                                        placeholder="Descrição da atividade"
                                         value="${activityForm.description}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         rows="3"
@@ -780,7 +642,7 @@
                                         <div class="grid grid-cols-2 gap-2">
                                             ${defaultActivities.slice(0, 6).map(activity => `
                                                 <button
-                                                    onclick="fillActivitySuggestion('${activity.name.replace(/'/g, "&apos;")}', '${activity.description.replace(/'/g, "&apos;")}', ${activity.points})"
+                                                    onclick="fillActivitySuggestion('${activity.name}', '${activity.description}', ${activity.points})"
                                                     class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                                                 >
                                                     <div class="text-xs font-medium text-gray-800">${activity.name}</div>
@@ -789,13 +651,11 @@
                                             `).join('')}
                                         </div>
                                     </div>
+
                                     <div class="flex space-x-3">
                                         <button
                                             onclick="addActivity()"
-                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors ${
-                                                childUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                                            }"
-                                            ${childUsers.length === 0 ? 'disabled' : ''}
+                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
                                         >
                                             Adicionar
                                         </button>
@@ -816,76 +676,119 @@
 
         // Renderização Principal
         function render() {
-            const app = document.getElementById('app');
-            
-            if (appState.showLogin || !appState.currentUser) {
-                app.innerHTML = LoginScreen();
-            } else if (appState.currentUser.type === 'child') {
-                app.innerHTML = ChildDashboard();
-            } else {
-                app.innerHTML = ParentDashboard();
-            }
-            
-            // Inicializar ícones Lucide
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+            try {
+                const app = document.getElementById('app');
+                if (!app) return;
+                
+                if (appState.showLogin || !appState.currentUser) {
+                    app.innerHTML = LoginScreen();
+                } else if (appState.currentUser.type === 'child') {
+                    app.innerHTML = ChildDashboard();
+                } else {
+                    app.innerHTML = ParentDashboard();
+                }
 
-            // Configurar event listeners para inputs (apenas uma vez após render)
-            setupInputListeners();
+                // Configurar event listeners para inputs
+                setupInputListeners();
+            } catch (e) {
+                console.error('Erro no render:', e);
+                document.getElementById('app').innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
+                            <h1 class="text-2xl font-bold text-red-600 mb-4">Erro</h1>
+                            <p class="text-gray-600 mb-4">Houve um problema. Tente recarregar a página.</p>
+                            <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+                                Recarregar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
         }
 
         // Configurar listeners para inputs sem causar re-render
         function setupInputListeners() {
-            // Login form listeners
-            const loginNameInput = document.getElementById('login-name');
-            if (loginNameInput) {
-                loginNameInput.addEventListener('input', (e) => {
-                    loginForm.name = e.target.value;
-                });
-            }
+            try {
+                // Login form listeners
+                const loginNameInput = document.getElementById('login-name');
+                if (loginNameInput) {
+                    loginNameInput.addEventListener('input', (e) => {
+                        loginForm.name = e.target.value;
+                    });
+                }
 
-            const loginTypeSelect = document.getElementById('login-type');
-            if (loginTypeSelect) {
-                loginTypeSelect.addEventListener('change', (e) => {
-                    loginForm.type = e.target.value;
-                    render(); // Re-render apenas quando o tipo muda (para mostrar/esconder mascotes)
-                });
-            }
+                const loginTypeSelect = document.getElementById('login-type');
+                if (loginTypeSelect) {
+                    loginTypeSelect.addEventListener('change', (e) => {
+                        loginForm.type = e.target.value;
+                        render();
+                    });
+                }
 
-            // Activity form listeners
-            const activityNameInput = document.getElementById('activity-name');
-            if (activityNameInput) {
-                activityNameInput.addEventListener('input', (e) => {
-                    activityForm.name = e.target.value;
-                });
-            }
+                // Activity form listeners
+                const activityNameInput = document.getElementById('activity-name');
+                if (activityNameInput) {
+                    activityNameInput.addEventListener('input', (e) => {
+                        activityForm.name = e.target.value;
+                    });
+                }
 
-            const activityDescInput = document.getElementById('activity-description');
-            if (activityDescInput) {
-                activityDescInput.addEventListener('input', (e) => {
-                    activityForm.description = e.target.value;
-                });
-            }
+                const activityDescInput = document.getElementById('activity-description');
+                if (activityDescInput) {
+                    activityDescInput.addEventListener('input', (e) => {
+                        activityForm.description = e.target.value;
+                    });
+                }
 
-            const activityPointsInput = document.getElementById('activity-points');
-            if (activityPointsInput) {
-                activityPointsInput.addEventListener('input', (e) => {
-                    activityForm.points = parseInt(e.target.value) || 10;
-                });
-            }
+                const activityPointsInput = document.getElementById('activity-points');
+                if (activityPointsInput) {
+                    activityPointsInput.addEventListener('input', (e) => {
+                        activityForm.points = parseInt(e.target.value) || 10;
+                    });
+                }
 
-            const activityTargetSelect = document.getElementById('activity-target');
-            if (activityTargetSelect) {
-                activityTargetSelect.addEventListener('change', (e) => {
-                    activityForm.targetUserId = e.target.value;
-                });
+                const activityTargetSelect = document.getElementById('activity-target');
+                if (activityTargetSelect) {
+                    activityTargetSelect.addEventListener('change', (e) => {
+                        activityForm.targetUserId = e.target.value;
+                    });
+                }
+            } catch (e) {
+                console.error('Erro ao configurar listeners:', e);
             }
         }
 
+        // Tornar funções globais
+        window.handleLogin = handleLogin;
+        window.toggleRegistering = toggleRegistering;
+        window.selectMascot = selectMascot;
+        window.logout = logout;
+        window.completeActivity = completeActivity;
+        window.approveActivity = approveActivity;
+        window.showAddActivityModal = showAddActivityModal;
+        window.hideAddActivityModal = hideAddActivityModal;
+        window.addActivity = addActivity;
+        window.fillActivitySuggestion = fillActivitySuggestion;
+
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            render();
+            try {
+                loadFromLocalStorage();
+                render();
+            } catch (e) {
+                console.error('Erro na inicialização:', e);
+                document.getElementById('app').innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
+                            <h1 class="text-2xl font-bold text-red-600 mb-4">Erro ao inicializar</h1>
+                            <p class="text-gray-600 mb-4">Houve um problema ao carregar o app.</p>
+                            <button onclick="location.reload()" class="bg-blue-500 text-white px-4 py-2 rounded-lg">
+                                Tentar novamente
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
         });
     </script>
 </body>
