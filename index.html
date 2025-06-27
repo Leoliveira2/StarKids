@@ -9,11 +9,21 @@
     body {
       background: linear-gradient(to bottom right, #fce7f3, #fbcfe8);
       min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .reward {
+      animation: rewardAnim 1s ease-out;
+    }
+    @keyframes rewardAnim {
+      0% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.5); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
     }
   </style>
 </head>
 <body>
   <div id="app" class="p-4 max-w-md mx-auto"></div>
+  <div id="animation" class="fixed top-10 left-1/2 transform -translate-x-1/2 text-6xl pointer-events-none"></div>
   <script>
     const mascots = {
       star: { name: 'Stella', emoji: '⭐' },
@@ -50,6 +60,13 @@
       return data ? JSON.parse(data) : [];
     }
 
+    function showReward(emoji) {
+      const anim = document.getElementById('animation');
+      anim.textContent = emoji;
+      anim.className = 'fixed top-10 left-1/2 transform -translate-x-1/2 text-6xl pointer-events-none reward';
+      setTimeout(() => anim.textContent = '', 1000);
+    }
+
     function completeActivity(index) {
       const activities = loadActivities();
       activities[index].status = 'completed';
@@ -57,7 +74,7 @@
 
       currentUser.xp += activities[index].points;
       saveUser(currentUser);
-      alert(`Atividade concluída! +${activities[index].points} XP`);
+      showReward('🎉 +' + activities[index].points + ' XP');
       renderDashboard();
     }
 
@@ -99,6 +116,7 @@
             ${Object.entries(mascots).map(([key, val]) => `<option value="${key}">${val.emoji} ${val.name}</option>`).join("")}
           </select>
           <button class="bg-green-500 text-white px-4 py-2 rounded w-full" id="loginBtn">Entrar</button>
+          <p class="text-center text-sm text-gray-500 mt-2">Se for seu primeiro acesso, um perfil será criado automaticamente.</p>
         </div>
       `;
 
