@@ -96,7 +96,35 @@
             "Você é demais! Continue brilhando! ✨"
         ];
 
-        const achievements = [
+        // Atividades padrão para crianças
+        const defaultActivities = [
+            { name: 'Dormir no horário (21h-22h)', description: 'Ir para a cama no horário combinado', points: 15 },
+            { name: 'Escovar os dentes (manhã)', description: 'Escovação matinal completa', points: 10 },
+            { name: 'Escovar os dentes (noite)', description: 'Escovação noturna completa', points: 10 },
+            { name: 'Tomar café da manhã completo', description: 'Alimentação saudável pela manhã', points: 10 },
+            { name: 'Chegar na escola no horário', description: 'Pontualidade escolar', points: 15 },
+            { name: 'Fazer o dever de casa', description: 'Completar todas as tarefas escolares', points: 20 },
+            { name: 'Ler por 15 minutos', description: 'Momento de leitura diária', points: 15 },
+            { name: 'Organizar o quarto', description: 'Guardar brinquedos e organizar espaço', points: 10 },
+            { name: 'Tomar banho', description: 'Higiene pessoal completa', points: 10 },
+            { name: 'Comer frutas ou verduras', description: 'Alimentação saudável', points: 10 },
+            { name: 'Ajudar nas tarefas de casa', description: 'Colaborar com a família', points: 15 }
+        ];
+
+        // Função para criar atividades padrão para uma criança
+        function createDefaultActivitiesForChild(childId) {
+            const today = new Date().toISOString();
+            return defaultActivities.map((activity, index) => ({
+                id: Date.now() + index,
+                userId: childId,
+                name: activity.name,
+                description: activity.description,
+                points: activity.points,
+                status: 'pending',
+                date: today,
+                isDefault: true
+            }));
+        }
             { id: 1, name: 'Primeiro Passo', description: 'Complete sua primeira atividade', requirement: 1, icon: '🎯' },
             { id: 2, name: 'Em Chamas', description: 'Mantenha 3 dias consecutivos', requirement: 3, icon: '🔥' },
             { id: 3, name: 'Super Estrela', description: 'Alcance o nível 5', requirement: 5, icon: '⭐' },
@@ -174,7 +202,15 @@
                 };
                 appState.users.push(newUser);
                 appState.currentUser = newUser;
-                showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
+                
+                // Se for criança, criar atividades padrão
+                if (newUser.type === 'child') {
+                    const defaultActivitiesForChild = createDefaultActivitiesForChild(newUser.id);
+                    appState.activities.push(...defaultActivitiesForChild);
+                    showNotification(`Bem-vindo(a), ${newUser.name}! Suas atividades diárias foram criadas! 🎉`);
+                } else {
+                    showNotification(`Bem-vindo(a), ${newUser.name}! 🎉`);
+                }
             } else {
                 const user = appState.users.find(u => u.name.toLowerCase() === loginForm.name.toLowerCase());
                 if (user) {
@@ -297,7 +333,19 @@
 
         function showAddActivityModal() {
             appState.showAddActivity = true;
-            activityForm = { name: '', description: '', points: 10, targetUserId: '' };
+            const childUsers = appState.users.filter(u => u.type === 'child');
+            
+            // Se há apenas uma criança, pré-seleciona ela
+            if (childUsers.length === 1) {
+                activityForm = { 
+                    name: '', 
+                    description: '', 
+                    points: 10, 
+                    targetUserId: childUsers[0].id.toString() 
+                };
+            } else {
+                activityForm = { name: '', description: '', points: 10, targetUserId: '' };
+            }
             render();
         }
 
@@ -307,19 +355,28 @@
         }
 
         function addActivity() {
-            if (!activityForm.name.trim() || !activityForm.targetUserId) {
+            const childUsers = appState.users.filter(u => u.type === 'child');
+            let targetUserId = activityForm.targetUserId;
+            
+            // Se há apenas uma criança e targetUserId não está definido, usar essa criança
+            if (childUsers.length === 1 && !targetUserId) {
+                targetUserId = childUsers[0].id.toString();
+            }
+            
+            if (!activityForm.name.trim() || !targetUserId) {
                 showNotification('Preencha todos os campos obrigatórios!', 'error');
                 return;
             }
 
             const activity = {
                 id: Date.now(),
-                userId: parseInt(activityForm.targetUserId),
+                userId: parseInt(targetUserId),
                 name: activityForm.name.trim(),
                 description: activityForm.description.trim(),
                 points: activityForm.points,
                 status: 'pending',
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                isDefault: false
             };
 
             appState.activities.push(activity);
@@ -328,6 +385,14 @@
             saveToLocalStorage();
             render();
         }
+
+        // Função global para preencher sugestão de atividade
+        window.fillActivitySuggestion = function(name, description, points) {
+            activityForm.name = name;
+            activityForm.description = description;
+            activityForm.points = points;
+            render();
+        };
 
         // Componentes
         function LoginScreen() {
@@ -658,26 +723,43 @@
                             <div class="bg-white rounded-2xl p-6 max-w-md w-full slide-up">
                                 <h2 class="text-xl font-bold text-gray-800 mb-4">Nova Atividade</h2>
                                 <div class="space-y-4">
-                                    <select
-                                        id="activity-target"
-                                        value="${activityForm.targetUserId}"
-                                        class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
-                                    >
-                                        <option value="">Selecione a criança</option>
-                                        ${childUsers.map(child => `
-                                            <option value="${child.id}">${child.name}</option>
-                                        `).join('')}
-                                    </select>
+                                    ${childUsers.length > 1 ? `
+                                        <select
+                                            id="activity-target"
+                                            value="${activityForm.targetUserId}"
+                                            class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
+                                        >
+                                            <option value="">Selecione a criança</option>
+                                            ${childUsers.map(child => `
+                                                <option value="${child.id}">${child.name}</option>
+                                            `).join('')}
+                                        </select>
+                                    ` : childUsers.length === 1 ? `
+                                        <div class="p-3 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="text-2xl">${mascots[childUsers[0].mascot].emoji}</div>
+                                                <div>
+                                                    <div class="font-semibold text-blue-800">Para: ${childUsers[0].name}</div>
+                                                    <div class="text-sm text-blue-600">Criança selecionada automaticamente</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ` : `
+                                        <div class="p-3 bg-red-50 border-2 border-red-200 rounded-xl text-center">
+                                            <div class="text-red-800 font-semibold">Nenhuma criança cadastrada</div>
+                                            <div class="text-sm text-red-600">Cadastre uma criança primeiro</div>
+                                        </div>
+                                    `}
                                     <input
                                         type="text"
                                         id="activity-name"
-                                        placeholder="Nome da atividade"
+                                        placeholder="Nome da atividade (ex: Escovar os dentes)"
                                         value="${activityForm.name}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                     />
                                     <textarea
                                         id="activity-description"
-                                        placeholder="Descrição (opcional)"
+                                        placeholder="Descrição (ex: Escovar bem os dentes após o café da manhã)"
                                         value="${activityForm.description}"
                                         class="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-400 focus:outline-none"
                                         rows="3"
@@ -691,10 +773,29 @@
                                         min="1"
                                         max="100"
                                     />
+                                    
+                                    <!-- Sugestões de atividades -->
+                                    <div class="border-t border-gray-200 pt-4">
+                                        <p class="text-sm text-gray-600 mb-2">💡 Sugestões rápidas:</p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            ${defaultActivities.slice(0, 6).map(activity => `
+                                                <button
+                                                    onclick="fillActivitySuggestion('${activity.name.replace(/'/g, "&apos;")}', '${activity.description.replace(/'/g, "&apos;")}', ${activity.points})"
+                                                    class="text-left p-2 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                                                >
+                                                    <div class="text-xs font-medium text-gray-800">${activity.name}</div>
+                                                    <div class="text-xs text-gray-500">${activity.points} XP</div>
+                                                </button>
+                                            `).join('')}
+                                        </div>
+                                    </div>
                                     <div class="flex space-x-3">
                                         <button
                                             onclick="addActivity()"
-                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+                                            class="flex-1 bg-blue-500 text-white p-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors ${
+                                                childUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                                            }"
+                                            ${childUsers.length === 0 ? 'disabled' : ''}
                                         >
                                             Adicionar
                                         </button>
