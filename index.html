@@ -115,6 +115,10 @@
           <select id="mascot" class="border p-2 rounded w-full mb-4">
             ${Object.entries(mascots).map(([key, val]) => `<option value="${key}">${val.emoji} ${val.name}</option>`).join("")}
           </select>
+          <select id="type" class="border p-2 rounded w-full mb-4">
+            <option value="child">👶 Criança</option>
+            <option value="parent">👨‍👩‍👧‍👦 Responsável</option>
+          </select>
           <button class="bg-green-500 text-white px-4 py-2 rounded w-full" id="loginBtn">Entrar</button>
           <p class="text-center text-sm text-gray-500 mt-2">Se for seu primeiro acesso, um perfil será criado automaticamente.</p>
         </div>
@@ -123,25 +127,66 @@
       document.getElementById("loginBtn").addEventListener("click", () => {
         const name = document.getElementById("name").value.trim();
         const mascot = document.getElementById("mascot").value;
+        const type = document.getElementById("type").value;
+
         if (!name) return alert("Digite seu nome");
 
         const existing = loadUser();
         if (existing && existing.name === name) {
           currentUser = existing;
         } else {
-          currentUser = { name, mascot, xp: 0 };
+          currentUser = { name, mascot, xp: 0, type };
           saveUser(currentUser);
-          saveActivities(defaultActivities.map(act => ({ ...act, status: 'pending' })));
+          if (type === 'child') {
+            saveActivities(defaultActivities.map(act => ({ ...act, status: 'pending' })));
+          }
         }
-        renderDashboard();
+
+        if (currentUser.type === 'parent') {
+          renderParentDashboard();
+        } else {
+          renderDashboard();
+        }
       });
+    }
+
+    function renderParentDashboard() {
+      const activities = loadActivities();
+      document.getElementById("app").innerHTML = `
+        <div class="p-4 max-w-xl mx-auto">
+          <h1 class="text-2xl font-bold mb-2">Painel do Responsável</h1>
+          <p class="text-sm mb-4">Você pode editar ou adicionar atividades para seus filhos</p>
+          <button class="mt-2 mb-4 bg-red-500 text-white px-4 py-2 rounded" onclick="logout()">Sair</button>
+          <div id="activities"></div>
+        </div>
+      `;
+
+      let html = "<h2 class='text-xl font-semibold mb-2'>Atividades</h2>";
+      activities.forEach((act, idx) => {
+        html += `<div class='border p-3 mb-2 rounded bg-white'>
+          <input class='w-full font-medium mb-1 p-1 border rounded' value='${act.name}' onchange='updateActivity(${idx}, "name", this.value)' />
+          <textarea class='w-full text-sm text-gray-700 p-1 border rounded mb-1' onchange='updateActivity(${idx}, "description", this.value)'>${act.description}</textarea>
+          <input type='number' class='w-full text-sm p-1 border rounded' value='${act.points}' onchange='updateActivity(${idx}, "points", this.value)' />
+        </div>`;
+      });
+      document.getElementById("activities").innerHTML = html;
+    }
+
+    function updateActivity(index, field, value) {
+      const activities = loadActivities();
+      activities[index][field] = field === 'points' ? parseInt(value) : value;
+      saveActivities(activities);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
       const savedUser = loadUser();
       if (savedUser) {
         currentUser = savedUser;
-        renderDashboard();
+        if (currentUser.type === 'parent') {
+          renderParentDashboard();
+        } else {
+          renderDashboard();
+        }
       } else {
         renderLogin();
       }
