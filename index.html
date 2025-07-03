@@ -3,57 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SuperKids - Analytics & Dashboard</title>
+  <title>SuperKids - Plataforma Educacional Gamificada</title>
+  <meta name="description" content="Transforme tarefas em aventuras divertidas para crianças de 5 a 12 anos">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SuperKids">
+  <meta name="theme-color" content="#3B82F6">
+  <meta name="format-detection" content="telephone=no">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 min-h-screen p-4">
-  <div class="max-w-6xl mx-auto bg-white rounded-3xl shadow-xl p-6">
-    <h1 class="text-3xl font-bold text-gray-800 mb-6">Painel dos Pais - Analytics</h1>
-
-    <!-- Abas -->
-    <div class="flex space-x-4 mb-6">
-      <button onclick="setTab('hoje')" class="tab-btn bg-blue-500 text-white px-4 py-2 rounded-xl">Hoje</button>
-      <button onclick="setTab('semana')" class="tab-btn bg-gray-200 px-4 py-2 rounded-xl">Semana</button>
-      <button onclick="setTab('mes')" class="tab-btn bg-gray-200 px-4 py-2 rounded-xl">Mês</button>
-    </div>
-
-    <!-- Conteúdo dinâmico -->
-    <div id="dashboard-content" class="space-y-8">
-      <!-- Charts serão inseridos aqui -->
-    </div>
-  </div>
-
+  <div id="app"></div>
   <script src="mascots.js"></script>
   <script src="charts.js"></script>
-  <script>
-    const dummyUserId = 1;
-    const appState = {
-      currentTab: 'hoje'
-    };
-
-    function setTab(tab) {
-      appState.currentTab = tab;
-      renderDashboard();
-    }
-
-    function renderDashboard() {
-      const container = document.getElementById('dashboard-content');
-      container.innerHTML = `
-        <h2 class="text-xl font-bold text-gray-700">📈 Linha do Tempo de XP</h2>
-        <canvas id="xpLineChart" height="120"></canvas>
-
-        <h2 class="text-xl font-bold text-gray-700">📊 Atividades por Semana</h2>
-        <canvas id="weeklyBarChart" height="120"></canvas>
-
-        <h2 class="text-xl font-bold text-gray-700">🔥 Consistência (Simulado)</h2>
-        <canvas id="heatmapChart" height="120"></canvas>
-      `;
-
-      renderCharts();
-    }
-
-    renderDashboard();
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
