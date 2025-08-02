@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Família - Atividades</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .sync-status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.2);
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .add-activity {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            margin-left: 10px;
+        }
+
+        .activities-list {
+            margin-top: 30px;
+        }
+
+        .activity-item {
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .activity-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .activity-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .activity-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .activity-details {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            
+            .btn-secondary {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👨‍👩‍👧 App Família</h1>
+            <p>Monitoramento de Atividades</p>
+            <div id="sync-status" class="sync-status">🔄 Iniciando...</div>
+        </div>
+
+        <div class="content">
+            <div id="message-area"></div>
+
+            <div class="add-activity">
+                <h2>➕ Adicionar Nova Atividade</h2>
+                <form id="activity-form">
+                    <div class="form-group">
+                        <label for="activity-name">Nome da Atividade:</label>
+                        <input type="text" id="activity-name" placeholder="Ex: Lição de casa de matemática" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="activity-status">Status:</label>
+                        <select id="activity-status" required>
+                            <option value="pending">⏳ Pendente</option>
+                            <option value="completed">✅ Concluída</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="activity-date">Data:</label>
+                        <input type="date" id="activity-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="activity-notes">Observações (opcional):</label>
+                        <textarea id="activity-notes" rows="3" placeholder="Adicione detalhes sobre a atividade..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn">💾 Salvar Atividade</button>
+                    <button type="button" class="btn btn-secondary" onclick="sincronizarManual()">🔄 Sincronizar</button>
+                </form>
+            </div>
+
+            <div class="activities-list">
+                <h2>📝 Atividades Registradas</h2>
+                <div id="activities-container">
+                    <div class="loading">Carregando atividades...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔑 COLE SEU TOKEN AQUI!
+        const ACCESS_TOKEN = 'sl.u.AF4WTDujVSGH-JAAHtzrejxBT-efhtuarBsnQzdD7VNm4QFsXWY0qNMy1t5nTvYVinkOFOXKeBJG495K4O2_jo-CN5aZLSSMv1CGHh3f9dscjV_fx_DbhW2OTivVAD9h02BsynzBj_4LBIcyz_wuHUOgPdseMulV4ZJ2G05xLYLF0CUdOcGqfTcfwF3HtabDvS0p51RXj7kgOXssKxkw1Z67CsRGUr01HaTq9IJXiq93iNvx3GD7QyFXxDfpPGsbV-8v9eSS3yX3ZQXGHBtrXUTnkdP52Y_oF-NXqP1zvDHjemRt2STXuW5dhoO5z3mx0u2bIxLm66jJzda1kLYOg95gfNddq0Feox1kotF_CO4EpQQzVduTBIKGKJ-2zeXitNBmPj8vZZHF5Z2XCkR8YmtC3i5raus20CBSJUQwJ8dECDzn-UcdGeYsn3nA6Gbg0nOuGcnaov7qAOkAWpxw4Dautw_9LgL_eLmT3Z2-aCwbQLWcbFuYHd2T3IAo4I42c3W1hyRAIDGY-JWcK7-4CkAk7uUqMQUuT14508YGXSaoljQ8da1iGDu--T2AT1k3bE9ylYewjfqGaPtdcjDUplrbWrtlvHuuu3yxjIX2Ek1tufgUS9NpfcdK2y4hNRCherukBA_WqOis08qAyn3_NvE6NPfL0flonmRX3L5otXdDZxoDsSG0Z1CGX1tgyvbolddigG6pHqzF80R10hlUtI2A1Pt9OLZQtXZGH-6Hoh_PAGDDPJnzAYwO50o0Gn4et1mFU0y9vDUcumSFSBIa5GH6I5ROUc32io34YUHLStUYsDNRhsqjquv_ysRzu1QYhLcSd-L6O-1l9YHcU6bArc3sKpaPl1-0ouhi1U3Y2w9X9oAwaEaTYe6LZU6qsqRx7N0amubIg9xERlXnOz9ohPD-DKHAehewVsd9_dbMYaYOut5N8V_9KWzlvOwqcEGKT47TA-WArI7NOs5_jMGDLpgxxmy2rhacuyfA309h9AnHpgnBMcSOKKa50MUaN0wt0RKjUOYj8H5Cn98y2NCUXutMuBSIwqg6dfUyS4Ik_j5jc9jv_07h4ICWgOJxTAJYfpxhEoXkR1RQosQlINiKSGRVKsVZB9Rx7BxoPWi-RGCh8PCBTi-Qn7FPTBEgetHIivmN-iW0meMfH5KBAw9gr8iyPIMxASWYmhPiYJI_JlQkq3O2qfFbL5UQ4m-LiWrMy95ak2ssCnNpLK6M0xR3jy1l0PXNF0fKE8blokrdRIv8MZEVsmLGMsduDEA7rBpe3OhGt45g_PjWJ17v76cKH4ZhHTKBegOqwM4FmPBQcEQvag';
+
+        class DropboxFamilySync {
+            constructor(accessToken) {
+                this.ACCESS_TOKEN = accessToken;
+                this.API_BASE = 'https://api.dropboxapi.com/2';
+                this.CONTENT_BASE = 'https://content.dropboxapi.com/2';
+                this.fileName = '/family_data.json';
+            }
+
+            async downloadData() {
+                try {
+                    const response = await fetch(`${this.CONTENT_BASE}/files/download`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+                            'Dropbox-API-Arg': JSON.stringify({
+                                path: this.fileName
+                            })
+                        }
+                    });
+
+                    if (response.ok) {
+                        const text = await response.text();
+                        return JSON.parse(text);
+                    } else {
+                        return this.getEmptyStructure();
+                    }
+                } catch (error) {
+                    console.log('Arquivo não encontrado, criando estrutura inicial');
+                    return this.getEmptyStructure();
+                }
+            }
+
+            async uploadData(data) {
+                try {
+                    data.last_sync = new Date().toISOString();
+                    data.synced_from = navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop';
+
+                    const response = await fetch(`${this.CONTENT_BASE}/files/upload`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.ACCESS_TOKEN}`,
+                            'Content-Type': 'application/octet-stream',
+                            'Dropbox-API-Arg': JSON.stringify({
+                                path: this.fileName,
+                                mode: 'overwrite',
+                                autorename: false
+                            })
+                        },
+                        body: JSON.stringify(data, null, 2)
+                    });
+
+                    return { success: response.ok };
+                } catch (error) {
+                    console.error('Erro ao salvar no Dropbox:', error);
+                    return { success: false, error: error.message };
+                }
+            }
+
+            async addActivity(activity) {
+                try {
+                    const currentData = await this.downloadData();
+                    
+                    activity.id = this.generateUUID();
+                    activity.timestamp = new Date().toISOString();
+                    activity.device = navigator.userAgent.includes('Mobile') ? 'Celular' : 'Computador';
+                    
+                    currentData.daughter_activities.push(activity);
+                    currentData.last_update = new Date().toISOString();
+
+                    const result = await this.uploadData(currentData);
+                    
+                    if (result.success) {
+                        await this.saveLocally(currentData);
+                        return { success: true, activity, allData: currentData };
+                    } else {
+                        await this.saveLocally(currentData);
+                        return { success: false, savedLocally: true, activity, allData: currentData };
+                    }
+                } catch (error) {
+                    console.error('Erro ao adicionar atividade:', error);
+                    return { success: false, error: error.message };
+                }
+            }
+
+            async syncData() {
+                try {
+                    const [localData, cloudData] = await Promise.all([
+                        this.loadLocally(),
+                        this.downloadData()
+                    ]);
+
+                    const localTime = new Date(localData.last_sync || 0).getTime();
+                    const cloudTime = new Date(cloudData.last_sync || 0).getTime();
+
+                    let finalData;
+                    
+                    if (localTime > cloudTime) {
+                        finalData = localData;
+                        await this.uploadData(finalData);
+                    } else if (cloudTime > localTime) {
+                        finalData = cloudData;
+                        await this.saveLocally(finalData);
+                    } else {
+                        finalData = this.mergeData(localData, cloudData);
+                        await this.uploadData(finalData);
+                        await this.saveLocally(finalData);
+                    }
+
+                    return { success: true, data: finalData };
+                } catch (error) {
+                    console.error('Erro na sincronização:', error);
+                    const localData = await this.loadLocally();
+                    return { success: false, data: localData, error: error.message };
+                }
+            }
+
+            mergeData(localData, cloudData) {
+                const merged = { ...cloudData };
+                const allActivities = new Map();
+                
+                cloudData.daughter_activities?.forEach(activity => {
+                    allActivities.set(activity.id, activity);
+                });
+                
+                localData.daughter_activities?.forEach(activity => {
+                    const existing = allActivities.get(activity.id);
+                    if (!existing || activity.timestamp > existing.timestamp) {
+                        allActivities.set(activity.id, activity);
+                    }
+                });
+                
+                merged.daughter_activities = Array.from(allActivities.values())
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                merged.last_sync = new Date().toISOString();
+                
+                return merged;
+            }
+
+            async saveLocally(data) {
+                try {
+                    localStorage.setItem('family_data_backup', JSON.stringify(data));
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao salvar localmente:', error);
+                    return false;
+                }
+            }
+
+            async loadLocally() {
+                try {
+                    const data = localStorage.getItem('family_data_backup');
+                    return data ? JSON.parse(data) : this.getEmptyStructure();
+                } catch (error) {
+                    console.error('Erro ao carregar dados locais:', error);
+                    return this.getEmptyStructure();
+                }
+            }
+
+            getEmptyStructure() {
+                return {
+                    daughter_activities: [],
+                    last_sync: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    version: '1.0'
+                };
+            }
+
+            generateUUID() {
+                return 'xxxx-xxxx-4xxx-yxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
+
+            isOnline() {
+                return navigator.onLine;
+            }
+        }
+
+        // Inicializar app
+        const familySync = new DropboxFamilySync(ACCESS_TOKEN);
+        let currentData = null;
+
+        // Elementos DOM
+        const syncStatus = document.getElementById('sync-status');
+        const messageArea = document.getElementById('message-area');
+        const activitiesContainer = document.getElementById('activities-container');
+        const activityForm = document.getElementById('activity-form');
+
+        // Inicialização
+        window.addEventListener('load', async () => {
+            // Definir data de hoje por padrão
+            document.getElementById('activity-date').value = new Date().toISOString().split('T')[0];
+            
+            // Sincronizar dados iniciais
+            await sincronizarDados();
+        });
+
+        // Função para atualizar status de sincronização
+        function updateSyncStatus(status, message) {
+            const statusEmojis = {
+                syncing: '🔄',
+                synced: '✅',
+                offline: '📱',
+                error: '⚠️'
+            };
+            
+            syncStatus.innerHTML = `${statusEmojis[status]} ${message}`;
+            syncStatus.className = `sync-status ${status}`;
+        }
+
+        // Função para mostrar mensagens
+        function showMessage(message, type = 'success') {
+            messageArea.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+
+        // Sincronizar dados
+        async function sincronizarDados() {
+            updateSyncStatus('syncing', 'Sincronizando...');
+            
+            if (!familySync.isOnline()) {
+                updateSyncStatus('offline', 'Modo offline');
+                currentData = await familySync.loadLocally();
+                atualizarListaAtividades(currentData);
+                return;
+            }
+
+            const result = await familySync.syncData();
+            
+            if (result.success) {
+                updateSyncStatus('synced', 'Sincronizado');
+                currentData = result.data;
+                showMessage('✅ Dados sincronizados com sucesso!');
+            } else {
+                updateSyncStatus('error', 'Erro na sincronização');
+                currentData = result.data;
+                showMessage('⚠️ Erro na sincronização. Usando dados locais.', 'error');
+            }
+            
+            atualizarListaAtividades(currentData);
+        }
+
+        // Sincronização manual
+        async function sincronizarManual() {
+            await sincronizarDados();
+        }
+
+        // Atualizar lista de atividades
+        function atualizarListaAtividades(data) {
+            if (!data || !data.daughter_activities || data.daughter_activities.length === 0) {
+                activitiesContainer.innerHTML = `
+                    <div class="loading">
+                        <p>😊 Nenhuma atividade registrada ainda.</p>
+                        <p>Adicione a primeira atividade acima!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const atividades = data.daughter_activities
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map(activity => {
+                    const statusClass = activity.status === 'completed' ? 'completed' : 'pending';
+                    const statusText = activity.status === 'completed' ? '✅ Concluída' : '⏳ Pendente';
+                    const date = new Date(activity.date).toLocaleDateString('pt-BR');
+                    const timestamp = new Date(activity.timestamp).toLocaleString('pt-BR');
+                    
+                    return `
+                        <div class="activity-item">
+                            <div class="activity-header">
+                                <div class="activity-title">${activity.activity}</div>
+                                <div class="activity-status ${statusClass}">${statusText}</div>
+                            </div>
+                            <div class="activity-details">
+                                <p><strong>📅 Data:</strong> ${date}</p>
+                                ${activity.notes ? `<p><strong>📝 Observações:</strong> ${activity.notes}</p>` : ''}
+                                <p><strong>📱 Dispositivo:</strong> ${activity.device}</p>
+                                <p><strong>⏰ Registrado em:</strong> ${timestamp}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            activitiesContainer.innerHTML = atividades;
+        }
+
+        // Adicionar nova atividade
+        activityForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const novaAtividade = {
+                activity: document.getElementById('activity-name').value,
+                status: document.getElementById('activity-status').value,
+                date: document.getElementById('activity-date').value,
+                notes: document.getElementById('activity-notes').value
+            };
+
+            updateSyncStatus('syncing', 'Salvando atividade...');
+            
+            const result = await familySync.addActivity(novaAtividade);
+            
+            if (result.success) {
+                updateSyncStatus('synced', 'Atividade salva!');
+                showMessage('✅ Atividade adicionada com sucesso!');
+                currentData = result.allData;
+                atualizarListaAtividades(currentData);
+                activityForm.reset();
+                document.getElementById('activity-date').value = new Date().toISOString().split('T')[0];
+            } else if (result.savedLocally) {
+                updateSyncStatus('offline', 'Salvo localmente');
+                showMessage('💾 Atividade salva localmente. Será sincronizada quando voltar online.', 'error');
+                currentData = result.allData;
+                atualizarListaAtividades(currentData);
+                activityForm.reset();
+                document.getElementById('activity-date').value = new Date().toISOString().split('T')[0];
+            } else {
+                updateSyncStatus('error', 'Erro ao salvar');
+                showMessage('❌ Erro ao salvar atividade. Tente novamente.', 'error');
+            }
+        });
+
+        // Sincronização automática
+        window.addEventListener('online', sincronizarDados);
+        setInterval(() => {
+            if (familySync.isOnline()) {
+                sincronizarDados();
+            }
+        }, 5 * 60 * 1000); // A cada 5 minutos
+    </script>
+</body>
+</html>
